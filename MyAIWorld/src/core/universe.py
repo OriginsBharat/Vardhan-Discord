@@ -1,4 +1,5 @@
 import pinecone
+import uuid
 from discord.ext import commands
 from src.config import PINECONE_API_KEY, PINECONE_ENVIRONMENT
 
@@ -13,36 +14,29 @@ class UniverseClient(commands.Cog):
             print("WARNING: Pinecone credentials not set. Long-term memory will be disabled.")
             self.index = None
             return
-            
-        try:
-            pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENVIRONMENT)
-            self.index_name = index_name
-            self.index = None
-            self._initialize_index()
-        except Exception as e:
-            print(f"Failed to initialize Pinecone: {e}")
-            self.index = None
 
-    def _initialize_index(self):
-        """Initializes the Pinecone index, creating it if it doesn't exist."""
-        if self.index_name not in pinecone.list_indexes():
-            print(f"Creating Pinecone index '{self.index_name}'...")
-            # Dimension must match the embedding model. 768 is common for sentence-transformers.
-            pinecone.create_index(self.index_name, dimension=768, metric="cosine")
-        
-        self.index = pinecone.Index(self.index_name)
-        print("Pinecone index loaded.")
+        try:
+            # The new Pinecone client (v3+) is initialized this way.
+            # The 'environment' is now handled by the project settings in your Pinecone account.
+            pc = pinecone.Pinecone(api_key=PINECONE_API_KEY)
+            self.index_name = index_name
+            self.index = pc.Index(self.index_name)
+            print("Pinecone index loaded.")
+        except Exception as e:
+            print(f"Failed to initialize Pinecone or connect to index: {e}")
+            self.index = None
 
     def store_memory(self, bot_name: str, memory_text: str, memory_vector: list):
         """Stores a memory vector for a specific bot."""
         if self.index is None: return
 
-        # Using a UUID for a unique memory ID
-        memory_id = f"{bot_name}-{pinecone.utils.random_id()}"
-        
+        # pinecone.utils.random_id() is deprecated. Use uuid instead.
+        memory_id = f"{bot_name}-{str(uuid.uuid4())}"
+
+        # The upsert format has changed in v3+. It now takes a list of dictionaries.
         self.index.upsert(
-            vectors=[(memory_id, memory_vector, {"bot": bot_name, "text": memory_text})],
-            namespace=bot_name # Use namespaces to separate memories per bot
+            vectors=[{'id': memory_id, 'values': memory_vector, 'metadata': {"bot": bot_name, "text": memory_text}}],
+            namespace=bot_name
         )
         print(f"Stored memory for {bot_name}.")
 
@@ -56,7 +50,7 @@ class UniverseClient(commands.Cog):
             namespace=bot_name,
             include_metadata=True
         )
-        
+
         return [match['metadata']['text'] for match in results['matches']]
 
 async def setup(bot):

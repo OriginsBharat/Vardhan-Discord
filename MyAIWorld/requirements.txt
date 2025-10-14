@@ -1,6 +1,6 @@
 discord.py
 python-dotenv
-pinecone-client
+pinecone
 customtkinter
 requests
 pillow
@@ -9,3 +9,4 @@ websockets
 numpy
 winshell
 pywin32
+websocket-client

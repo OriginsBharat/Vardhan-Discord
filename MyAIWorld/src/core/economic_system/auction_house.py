@@ -53,7 +53,9 @@ class AuctionHouse(commands.Cog):
         auction.is_active = False
         guild = self.bot.get_guild(auction.guild_id)
         channel = guild.get_channel(auction.channel_id) if guild else None
-        if not channel: return del self.auctions[auction.message_id]
+        if not channel:
+            del self.auctions[auction.message_id]
+            return
         if auction.high_bidder_id:
             self.bot.economy_manager.add_balance(auction.seller_id, auction.current_bid)
             winner = await self.bot.fetch_user(auction.high_bidder_id)
