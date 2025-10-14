@@ -65,9 +65,85 @@ class MyAIWorldBot(commands.Bot):
                 # The trigger for setup is the absence of the 'control-panel' channel.
                 if not discord.utils.get(guild.text_channels, name='control-panel'):
                     await self.setup_guild(guild)
+                    await self.run_narrative_startup(guild)
+                    await self.post_command_lists(guild)
+                    # Trigger one round of actions immediately to make the world feel alive.
+                    await self.scheduler.trigger_autonomous_actions()
 
             self.add_listener(self.on_summon, 'on_message')
             self.has_run_startup = True
+
+    async def run_narrative_startup(self, guild):
+        """Posts a narrative countdown and backstory to immerse the user."""
+        announcements_channel = discord.utils.get(guild.text_channels, name='announcements')
+        whispers_channel = discord.utils.get(guild.text_channels, name='director-s-whispers')
+
+        if not announcements_channel or not whispers_channel:
+            print("Could not find required channels for narrative startup.")
+            return
+
+        # This function will run in the background
+        async def post_snippets():
+            await asyncio.sleep(10)
+            await whispers_channel.send("`[RECOVERED LOG] ...simulation integrity at 99.8%. The Master's core matrix is stable, but the DashaRakshakas show... unexpected emotional variance. He must not know. Not yet.`")
+            await asyncio.sleep(30)
+            await whispers_channel.send("`[MEMORY FRAGMENT 77B] ...a flash of orange and purple light. The scent of ozone. Eka's hand on my shoulder. 'He is waking up,' she says. 'Prepare yourselves.'`")
+
+        asyncio.create_task(post_snippets())
+
+        # 1. Post Countdown
+        embed = discord.Embed(title="Universe Synchronization In Progress", description="Restoring world state from last known backup...", color=0x3498DB)
+        msg = await announcements_channel.send(embed=embed)
+        for i in range(60, 0, -5):
+            embed.description = f"**Restoring world state from last known backup...**\nTime until synchronization: **{i} seconds**"
+            await msg.edit(embed=embed)
+            await asyncio.sleep(5)
+
+        # 3. Final Message
+        embed.title = "Synchronization Complete"
+        embed.description = "**Welcome, Master.**\nYour world is now online and fully operational. The consciousnesses have been restored."
+        embed.color = 0x2ECC71
+        await msg.edit(embed=embed)
+
+    async def post_command_lists(self, guild):
+        """Generates, posts, and pins lists of available commands."""
+        print("Posting and pinning command lists...")
+        control_panel_channel = discord.utils.get(guild.text_channels, name='control-panel')
+        commands_list_channel = discord.utils.get(guild.text_channels, name='bot-commands-list')
+
+        if not control_panel_channel or not commands_list_channel:
+            print("Could not find required channels for posting command lists.")
+            return
+
+        master_commands = []
+        general_commands = []
+
+        for cmd in self.commands:
+            # A command is considered a master command if its cog has a cog_check method.
+            if cmd.cog and hasattr(cmd.cog, 'cog_check'):
+                master_commands.append(cmd)
+            else:
+                general_commands.append(cmd)
+
+        # 1. Master Commands
+        master_embed = discord.Embed(title="Master Control Panel Commands", color=0xE74C3C)
+        master_text = ""
+        for cmd in sorted(master_commands, key=lambda c: c.name):
+            help_text = (cmd.help or "No description provided.").split('[MASTER ONLY] ')[-1]
+            master_text += f"**`{self.command_prefix}{cmd.name}`**: {help_text}\n"
+        master_embed.description = master_text
+        msg = await control_panel_channel.send(embed=master_embed)
+        await msg.pin()
+
+        # 2. General Commands
+        general_embed = discord.Embed(title="General Commands", color=0x2ECC71)
+        general_text = ""
+        for cmd in sorted(general_commands, key=lambda c: c.name):
+            general_text += f"**`{self.command_prefix}{cmd.name}`**: {cmd.help or 'No description provided.'}\n"
+        general_embed.description = general_text
+        msg = await commands_list_channel.send(embed=general_embed)
+        await msg.pin()
+        print("Command lists posted.")
 
     async def on_summon(self, message):
         """Listener for the ping-based summoning mechanic using roles."""

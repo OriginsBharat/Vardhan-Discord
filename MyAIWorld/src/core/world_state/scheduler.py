@@ -46,13 +46,18 @@ class Scheduler:
             if is_currently_active and not persona.is_online:
                 persona.is_online = True
                 print(f"[Scheduler] {persona.name} is now online.")
+                # Post an initial message to their chamber to show they are active
                 try:
                     channel_name = f"{persona.name.lower()}-s-chamber"
                     channel = discord.utils.get(self.bot.guilds[0].text_channels, name=channel_name)
                     if channel:
-                        await channel.send(f"*{persona.name} has arrived.*")
+                        prompt = f"You are {persona.name}. You have just woken up in your private chamber. Write a single, short, in-character sentence describing what you are doing or thinking."
+                        arrival_text = self.bot.ollama_client.generate_text("dolphin-2.2.1-mistral:7b-q4_K_M", prompt, persona.base_persona)
+                        if "Error:" not in arrival_text:
+                            webhook = await self.bot.get_cog('ControlPanel').get_webhook(channel)
+                            await webhook.send(arrival_text, username=persona.name, avatar_url=self.bot.user.avatar.url if self.bot.user.avatar else None)
                 except Exception as e:
-                    print(f"Failed to send online notification for {persona.name}: {e}")
+                    print(f"Failed to send arrival notification for {persona.name}: {e}")
             elif not is_currently_active and persona.is_online:
                 persona.is_online = False
                 print(f"[Scheduler] {persona.name} is now offline.")
