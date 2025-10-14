@@ -103,11 +103,14 @@ class MyAIWorldBot(commands.Bot):
         print(f"Performing first-time setup for guild: {guild.name}")
 
         # Delete all existing channels and roles to ensure a clean slate
+        print("Deleting old channels and roles...")
         for channel in await guild.fetch_channels():
             await channel.delete()
+            await asyncio.sleep(1) # Add delay to avoid rate limits
         for role in guild.roles:
             if role.name != "@everyone" and not role.managed:
                 await role.delete()
+                await asyncio.sleep(1) # Add delay to avoid rate limits
 
         # --- PERMISSIONS ---
         master_member = guild.get_member(MASTER_ID)
@@ -122,42 +125,43 @@ class MyAIWorldBot(commands.Bot):
         }
 
         # --- CATEGORIES & CHANNELS ---
+        print("Creating new server structure...")
         # THE CITADEL (Admin & Info)
-        citadel = await guild.create_category("THE CITADEL")
-        await guild.create_text_channel("announcements", category=citadel)
-        await guild.create_text_channel("world-events", category=citadel)
-        await guild.create_text_channel("bot-commands-list", category=citadel, overwrites=master_only_overwrites)
+        citadel = await guild.create_category("THE CITADEL"); await asyncio.sleep(1)
+        await guild.create_text_channel("announcements", category=citadel); await asyncio.sleep(1)
+        await guild.create_text_channel("world-events", category=citadel); await asyncio.sleep(1)
+        await guild.create_text_channel("bot-commands-list", category=citadel, overwrites=master_only_overwrites); await asyncio.sleep(1)
 
         # CHARACTER HOMES
-        homes = await guild.create_category("CHARACTER HOMES")
+        homes = await guild.create_category("CHARACTER HOMES"); await asyncio.sleep(1)
         for persona in self.persona_manager.get_all_personas():
-            role = await guild.create_role(name=persona.name, colour=discord.Colour(int(persona.aura_color, 16)), mentionable=True)
+            role = await guild.create_role(name=persona.name, colour=discord.Colour(int(persona.aura_color, 16)), mentionable=True); await asyncio.sleep(1)
             persona.role_id = role.id # Assign role ID back to persona object
             home_channel_name = f"{persona.name.lower()}-s-chamber"
-            await guild.create_text_channel(home_channel_name, category=homes)
-        await guild.create_voice_channel("The Living Quarters", category=homes)
+            await guild.create_text_channel(home_channel_name, category=homes); await asyncio.sleep(1)
+        await guild.create_voice_channel("The Living Quarters", category=homes); await asyncio.sleep(1)
 
         # THE MARKET DISTRICT (Economy)
-        market = await guild.create_category("THE MARKET DISTRICT")
-        await guild.create_text_channel("the-market-square", category=market)
-        await guild.create_text_channel("the-auction-house", category=market)
-        await guild.create_text_channel("job-board", category=market)
-        await guild.create_text_channel("bot-owned-shops", category=market)
+        market = await guild.create_category("THE MARKET DISTRICT"); await asyncio.sleep(1)
+        await guild.create_text_channel("the-market-square", category=market); await asyncio.sleep(1)
+        await guild.create_text_channel("the-auction-house", category=market); await asyncio.sleep(1)
+        await guild.create_text_channel("job-board", category=market); await asyncio.sleep(1)
+        await guild.create_text_channel("bot-owned-shops", category=market); await asyncio.sleep(1)
 
         # THE VELVET DISTRICT (NSFW)
-        velvet = await guild.create_category("THE VELVET DISTRICT")
-        velvet_lounge = await guild.create_text_channel("the-velvet-lounge", category=velvet)
-        await velvet_lounge.edit(nsfw=True)
-        red_lantern = await guild.create_text_channel("the-red-lantern-brothel", category=velvet)
-        await red_lantern.edit(nsfw=True)
-        erotica_library = await guild.create_text_channel("erotica-library", category=velvet)
-        await erotica_library.edit(nsfw=True)
+        velvet = await guild.create_category("THE VELVET DISTRICT"); await asyncio.sleep(1)
+        velvet_lounge = await guild.create_text_channel("the-velvet-lounge", category=velvet); await asyncio.sleep(1)
+        await velvet_lounge.edit(nsfw=True); await asyncio.sleep(1)
+        red_lantern = await guild.create_text_channel("the-red-lantern-brothel", category=velvet); await asyncio.sleep(1)
+        await red_lantern.edit(nsfw=True); await asyncio.sleep(1)
+        erotica_library = await guild.create_text_channel("erotica-library", category=velvet); await asyncio.sleep(1)
+        await erotica_library.edit(nsfw=True); await asyncio.sleep(1)
 
         # MASTER'S PRIVATE CHAMBERS
-        master_chambers = await guild.create_category("MASTER'S PRIVATE CHAMBERS", overwrites=master_only_overwrites)
-        await guild.create_text_channel("control-panel", category=master_chambers)
-        await guild.create_text_channel("maya-s-daily-journal", category=master_chambers)
-        await guild.create_text_channel("director-s-whispers", category=master_chambers)
+        master_chambers = await guild.create_category("MASTER'S PRIVATE CHAMBERS", overwrites=master_only_overwrites); await asyncio.sleep(1)
+        await guild.create_text_channel("control-panel", category=master_chambers); await asyncio.sleep(1)
+        await guild.create_text_channel("maya-s-daily-journal", category=master_chambers); await asyncio.sleep(1)
+        await guild.create_text_channel("director-s-whispers", category=master_chambers); await asyncio.sleep(1)
 
         print("Guild setup complete.")
 

@@ -32,14 +32,22 @@ class Scheduler:
         current_hour = datetime.datetime.now(datetime.timezone.utc).hour
         for persona in self.bot.persona_manager.get_all_personas():
             wake_time, sleep_time = persona.schedule.get("wake", 7), persona.schedule.get("sleep", 23)
-            if wake_time <= current_hour < sleep_time:
-                if not persona.is_online:
-                    persona.is_online = True
-                    print(f"[Scheduler] {persona.name} is now online.")
+
+            is_currently_active = False
+            # This logic correctly handles overnight schedules (e.g., wake at 22, sleep at 10)
+            if wake_time < sleep_time:
+                # Standard daytime schedule
+                is_currently_active = wake_time <= current_hour < sleep_time
             else:
-                if persona.is_online:
-                    persona.is_online = False
-                    print(f"[Scheduler] {persona.name} is now offline.")
+                # Overnight schedule
+                is_currently_active = current_hour >= wake_time or current_hour < sleep_time
+
+            if is_currently_active and not persona.is_online:
+                persona.is_online = True
+                print(f"[Scheduler] {persona.name} is now online.")
+            elif not is_currently_active and persona.is_online:
+                persona.is_online = False
+                print(f"[Scheduler] {persona.name} is now offline.")
 
     async def check_neediness(self):
         """Checks bot neediness levels and may trigger a seductive DM to the Master."""
