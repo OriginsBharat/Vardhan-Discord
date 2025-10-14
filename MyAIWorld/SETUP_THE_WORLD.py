@@ -8,6 +8,11 @@ import ctypes
 import platform
 import threading
 
+# --- Definitive Path Fix ---
+# Get the absolute path of the directory containing this script.
+# All other paths will be built from this, making the script robust.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 class SetupWizard(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -90,7 +95,8 @@ class SetupWizard(ctk.CTk):
 
         # Voices & Kinks
         try:
-            with open("MyAIWorld/data/character_canon.json", "r") as f:
+            # Use absolute path
+            with open(os.path.join(BASE_DIR, "data", "character_canon.json"), "r") as f:
                 characters = json.load(f)
             for i, name in enumerate(characters.keys()):
                 ctk.CTkLabel(self.voices_frame, text=f"{name} Voice:").grid(row=i, column=0, padx=10, pady=5, sticky="w")
@@ -103,7 +109,7 @@ class SetupWizard(ctk.CTk):
                 k_entry.grid(row=i, column=1, padx=10, pady=5, sticky="ew")
                 self.kink_entries[name] = k_entry
         except FileNotFoundError:
-            messagebox.showerror("Error", "MyAIWorld/data/character_canon.json not found!")
+            messagebox.showerror("Error", f"Critical file not found: {os.path.join(BASE_DIR, 'data', 'character_canon.json')}")
 
     def find_path(self, program_name, executable_name):
         if platform.system() != "Windows": return None
@@ -136,11 +142,11 @@ class SetupWizard(ctk.CTk):
             messagebox.showerror("Error", "All secret fields must be filled out.")
             return
 
-        # Ensure data directories exist
-        os.makedirs("MyAIWorld/data", exist_ok=True)
-        os.makedirs("MyAIWorld/data/voices", exist_ok=True)
+        # Ensure data directories exist using absolute paths
+        os.makedirs(os.path.join(BASE_DIR, "data"), exist_ok=True)
+        os.makedirs(os.path.join(BASE_DIR, "data", "voices"), exist_ok=True)
 
-        with open(".env", "w") as f:
+        with open(os.path.join(BASE_DIR, ".env"), "w") as f:
             f.write(f"DISCORD_TOKEN={self.discord_token_entry.get()}\n")
             f.write(f"PINECONE_API_KEY={self.pinecone_key_entry.get()}\n")
             f.write(f"PINECONE_ENVIRONMENT={self.pinecone_env_entry.get()}\n")
@@ -151,7 +157,7 @@ class SetupWizard(ctk.CTk):
                 f.write(f"VOICE_{name.upper()}={entry.get()}\n")
 
         kinks_data = {name: [k.strip() for k in entry.get().split(',')] for name, entry in self.kink_entries.items()}
-        with open("MyAIWorld/data/character_kinks.json", "w") as f:
+        with open(os.path.join(BASE_DIR, "data", "character_kinks.json"), "w") as f:
             json.dump(kinks_data, f, indent=4)
 
         # Create the invisible VBS launcher
@@ -165,10 +171,8 @@ class SetupWizard(ctk.CTk):
         ollama_exe_path = os.path.abspath(os.path.join(self.ollama_path_entry.get(), 'ollama.exe'))
         comfyui_python_path = os.path.abspath(os.path.join(self.comfyui_path_entry.get(), 'python_embeded', 'python.exe'))
         comfyui_main_path = os.path.abspath(os.path.join(self.comfyui_path_entry.get(), 'main.py'))
-        start_world_bat_path = os.path.abspath(os.path.join(os.getcwd(), 'start_world.bat'))
+        start_world_bat_path = os.path.abspath(os.path.join(BASE_DIR, 'start_world.bat'))
 
-        # Simplified VBScript. The OLLAMA_HOST variable ensures the server binds correctly.
-        # The OLLAMA_MODELS variable is removed as it was an incorrect fix.
         vbs_script_content = f'''
 Set WshShell = CreateObject("WScript.Shell")
 WshShell.Environment("PROCESS")("OLLAMA_HOST") = "127.0.0.1"
@@ -177,14 +181,14 @@ WshShell.Run "cmd /c ""{comfyui_python_path}"" ""{comfyui_main_path}"" --windows
 WshShell.Run "cmd /c ""{start_world_bat_path}""", 0, false
 Set WshShell = Nothing
 '''
-        with open("invisible_launcher.vbs", "w") as f:
+        with open(os.path.join(BASE_DIR, "invisible_launcher.vbs"), "w") as f:
             f.write(vbs_script_content)
 
         if platform.system() == "Windows":
             startup_folder = os.path.join(os.getenv('APPDATA'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
             if os.path.isdir(startup_folder):
                 import shutil
-                shutil.copy("invisible_launcher.vbs", startup_folder)
+                shutil.copy(os.path.join(BASE_DIR, "invisible_launcher.vbs"), startup_folder)
                 messagebox.showinfo("Success", "Configuration saved and auto-start enabled.")
             else:
                 messagebox.showwarning("Warning", "Could not find Windows startup folder. You will need to start the world manually.")
