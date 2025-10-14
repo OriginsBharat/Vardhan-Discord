@@ -9,9 +9,9 @@ class Conflict(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         # Tracks active challenges {challenger_id: target_id}, IDs can be int (user) or str (persona)
-        self.active_duels = {} 
+        self.active_duels = {}
 
-    @commands.command(name="challenge")
+    @commands.command(name="challenge", help="Challenge another user to a duel. Usage: !challenge <@user>")
     async def challenge(self, ctx, target: discord.Member):
         """
         Challenges another user to a duel in #the-coliseum.
@@ -58,7 +58,7 @@ class Conflict(commands.Cog):
 
         except asyncio.TimeoutError:
             await ctx.send("The challenge was not answered in time and has expired.")
-            
+
 async def setup(bot):
     """Adds the cog to the bot."""
     await bot.add_cog(Conflict(bot))

@@ -64,7 +64,6 @@ class MyAIWorldBot(commands.Bot):
                 guild = self.guilds[0]
                 if not discord.utils.get(guild.text_channels, name='control-panel'):
                     await self.setup_guild(guild)
-                    # The new startup sequence handles everything
                     await self.pre_populate_world(guild)
                     await self.reveal_world(guild)
                     await self.post_command_lists(guild)
@@ -120,10 +119,6 @@ class MyAIWorldBot(commands.Bot):
             master_member: discord.PermissionOverwrite(read_messages=False),
             guild.me: discord.PermissionOverwrite(read_messages=True)
         }
-        # Permissions to REVEAL channels to the Master
-        self.reveal_to_master_overwrites = {
-            master_member: discord.PermissionOverwrite(read_messages=True)
-        }
         # Permissions for the Master's private channels (always visible)
         master_only_overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
@@ -136,7 +131,6 @@ class MyAIWorldBot(commands.Bot):
         citadel = await guild.create_category("THE CITADEL", overwrites=hide_from_master_overwrites)
         await citadel.create_text_channel("announcements")
         await citadel.create_text_channel("world-events")
-        # This one is an exception, it's for the master, but we'll hide it for the reveal
         await citadel.create_text_channel("bot-commands-list")
 
         homes = await guild.create_category("CHARACTER HOMES", overwrites=hide_from_master_overwrites)
@@ -159,6 +153,11 @@ class MyAIWorldBot(commands.Bot):
         await red_lantern.edit(nsfw=True)
         erotica_library = await velvet.create_text_channel("erotica-library")
         await erotica_library.edit(nsfw=True)
+
+        creative = await guild.create_category("CREATIVE WORKS", overwrites=hide_from_master_overwrites)
+        await creative.create_text_channel("art-gallery")
+        nsfw_art_gallery = await creative.create_text_channel("nsfw-art-gallery")
+        await nsfw_art_gallery.edit(nsfw=True)
 
         # Master's chambers are created last and are ALWAYS visible.
         master_chambers = await guild.create_category("MASTER'S PRIVATE CHAMBERS", overwrites=master_only_overwrites)
@@ -204,7 +203,6 @@ class MyAIWorldBot(commands.Bot):
         control_panel_channel = discord.utils.get(guild.text_channels, name='control-panel')
         commands_list_channel = discord.utils.get(guild.text_channels, name='bot-commands-list')
 
-        # This channel was hidden, so we must un-hide it for the master before posting.
         await commands_list_channel.set_permissions(guild.get_member(MASTER_ID), read_messages=True)
 
         master_commands = []

@@ -14,12 +14,12 @@ class Scheduler:
         """The main loop that runs continuously."""
         await self.bot.wait_until_ready()
         print("Scheduler loop started.")
-        
+
         counter = 0
         while not self.bot.is_closed():
             await asyncio.sleep(1)
             counter += 1
-            
+
             if counter % 60 == 0: await self.check_schedules()
             if counter % 300 == 0: await self.check_neediness()
             if counter % 600 == 0: await self.check_loans()
@@ -114,7 +114,7 @@ class Scheduler:
         """Triggers the Event AI to potentially generate a new world event."""
         if hasattr(self.bot, 'event_ai') and random.randint(1, 2) == 1:
             await self.bot.event_ai.generate_event()
-        
+
     async def generate_masters_journal(self):
         """Has Maya generate a narrative summary of the day's events."""
         journal_channel = discord.utils.get(self.bot.guilds[0].text_channels, name='maya-s-daily-journal')

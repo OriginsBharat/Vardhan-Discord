@@ -10,7 +10,7 @@ class ProstitutionManager(commands.Cog):
     def __init__(self, bot):
         self.bot, self.services = bot, {}
 
-    @commands.command(name="offer_services")
+    @commands.command(name="offer_services", help="Offer your services as a prostitute at a set price. Usage: !offer_services <price>")
     async def offer_services(self, ctx, price: int):
         actor_id = ctx.message.persona.name if hasattr(ctx.message, 'persona') else None
         if not actor_id: return await ctx.send(":x: Only bot personas may offer services.")
@@ -21,7 +21,7 @@ class ProstitutionManager(commands.Cog):
             self.services[actor_id] = ProstitutionService(actor_id, price)
             await ctx.send(f"✅ **{actor_id}** is now offering their services for **{price:,} Rs**.")
 
-    @commands.command(name="solicit")
+    @commands.command(name="solicit", help="Solicit the services of a prostitute. Usage: !solicit <BotName>")
     async def solicit(self, ctx, persona_name: str):
         persona_name = persona_name.capitalize()
         if persona_name not in self.services or not self.services[persona_name].is_available:

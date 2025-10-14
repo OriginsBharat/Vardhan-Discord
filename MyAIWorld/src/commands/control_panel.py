@@ -49,7 +49,7 @@ class ControlPanel(commands.Cog):
         """Restricts all commands in this cog to the Master."""
         return ctx.author.id == MASTER_ID
 
-    @commands.command(name="possess")
+    @commands.command(name="possess", help="[MASTER ONLY] Take direct control of a bot to speak as them. Usage: !possess <BotName>")
     async def possess(self, ctx, bot_name: str):
         """[MASTER ONLY] Possesses a bot, allowing you to speak as them."""
         persona = self.bot.persona_manager.get_persona(bot_name.capitalize())
@@ -59,7 +59,7 @@ class ControlPanel(commands.Cog):
         self.possessed_bot = persona
         await ctx.send(f"👑 You now possess **{persona.name}**. All your messages in this server will now be sent as them. Use `!release` to stop.")
 
-    @commands.command(name="release")
+    @commands.command(name="release", help="[MASTER ONLY] Release control of a possessed bot.")
     async def release(self, ctx):
         """[MASTER ONLY] Releases control of a possessed bot."""
         if not self.possessed_bot:
@@ -69,7 +69,7 @@ class ControlPanel(commands.Cog):
         self.possessed_bot = None
         await ctx.send(f"✅ You have released **{released_name}**.")
 
-    @commands.command(name="adjust")
+    @commands.command(name="adjust", help="[MASTER ONLY] Adjust an emotional slider for a bot. Usage: !adjust <BotName> <Emotion> <Value>")
     async def adjust_slider(self, ctx, bot_name: str, emotion: str, value: int):
         """[MASTER ONLY] Adjusts an emotional slider for a specified bot."""
         persona = self.bot.persona_manager.get_persona(bot_name.capitalize())
@@ -83,7 +83,7 @@ class ControlPanel(commands.Cog):
         setattr(persona, emotion.lower(), value)
         await ctx.send(f":white_check_mark: Successfully adjusted **{persona.name}**'s `{emotion.lower()}` to **{value}**.")
 
-    @commands.command(name="status")
+    @commands.command(name="status", help="[MASTER ONLY] Display the emotional status of all bots.")
     async def get_status(self, ctx):
         """[MASTER ONLY] Displays the current emotional status of all personas."""
         personas = self.bot.persona_manager.get_all_personas()
@@ -98,7 +98,7 @@ class ControlPanel(commands.Cog):
             embed.add_field(name=f"{persona.name} ({'Online' if persona.is_online else 'Offline'})", value=status_text, inline=True)
         await ctx.send(embed=embed)
 
-    @commands.command(name="worldstatus")
+    @commands.command(name="worldstatus", help="[MASTER ONLY] Display the online status and schedule of all bots.")
     async def world_status(self, ctx):
         """[MASTER ONLY] Displays the online status and schedule of all personas."""
         personas = self.bot.persona_manager.get_all_personas()
@@ -114,7 +114,7 @@ class ControlPanel(commands.Cog):
         embed.set_footer(text="Use !status for detailed emotional sliders.")
         await ctx.send(embed=embed)
 
-    @commands.command(name="declare_winner")
+    @commands.command(name="declare_winner", help="[MASTER ONLY] Declare a winner in a duel, scarring the loser. Usage: !declare_winner <@User>")
     async def declare_winner(self, ctx, winner: discord.Member):
         """[MASTER ONLY] Declares the winner of an active duel, scarring the loser."""
         conflict_cog = self.bot.get_cog('Conflict')
@@ -137,7 +137,7 @@ class ControlPanel(commands.Cog):
         await ctx.send(f"👑 **The Master has spoken!** {winner.mention} is victorious!\n{loser_mention} has been defeated and permanently scarred by the humiliation.")
         del active_duels[duel_to_remove]
 
-    @commands.command(name="create_emotion")
+    @commands.command(name="create_emotion", help="[MASTER ONLY] Create a new emotional slider for a bot. Usage: !create_emotion <BotName> <EmotionName>")
     async def create_emotion(self, ctx, bot_name: str, emotion_name: str):
         """[MASTER ONLY] Creates a new emotional slider for a bot."""
         persona = self.bot.persona_manager.get_persona(bot_name.capitalize())
@@ -146,12 +146,12 @@ class ControlPanel(commands.Cog):
         setattr(persona, emotion_name.lower(), 50)
         await ctx.send(f"✅ Created new emotion slider `{emotion_name.lower()}` for **{persona.name}**.")
 
-    @commands.command(name="judge")
+    @commands.command(name="judge", help="[MASTER ONLY] Override a court case and deliver a verdict. Usage: !judge <CaseID> <Verdict>")
     async def judge(self, ctx, case_id: str, *, verdict: str):
         """[MASTER ONLY] Overrides a court case and delivers a verdict."""
         await ctx.send(f"⚖️ **Divine Judgment!** ⚖️\nMaster has presided over case **#{case_id}**.\n**Verdict:** {verdict}")
 
-    @commands.command(name="offer")
+    @commands.command(name="offer", help="[MASTER ONLY] Create a high-value job offer for bots. Usage: !offer <Price> <Description>")
     async def make_offer(self, ctx, price: int, *, description: str):
         """[MASTER ONLY] Creates a high-value offer for bots to see."""
         embed = discord.Embed(title="A Divine Offer From The Master!", description=description, color=0xFFD700)
@@ -160,7 +160,7 @@ class ControlPanel(commands.Cog):
         if jobs_channel: await jobs_channel.send(embed=embed)
         else: await ctx.send(embed=embed)
 
-    @commands.command(name="test_rejection")
+    @commands.command(name="test_rejection", help="[MASTER ONLY] Test the non-consensual power dynamic. Usage: !test_rejection <AggressorName> <TargetName>")
     async def test_rejection(self, ctx, aggressor_name: str, target_name: str):
         """[MASTER ONLY] Tests the non-con power dynamic between two bots."""
         aggressor = self.bot.persona_manager.get_persona(aggressor_name.capitalize())

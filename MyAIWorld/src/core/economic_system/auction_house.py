@@ -20,7 +20,7 @@ class AuctionHouse(commands.Cog):
     def cog_unload(self):
         self.check_auctions.cancel()
 
-    @commands.command(name="start_auction")
+    @commands.command(name="start_auction", help="Start an auction for an item. Usage: !start_auction <start_price> <duration_minutes> <item_name>")
     async def start_auction(self, ctx, start_price: int, duration_minutes: int, *, item: str):
         if ctx.channel.name != 'the-auction-house': return
         msg = await ctx.send(embed=discord.Embed(title="Creating Auction..."))
@@ -28,7 +28,7 @@ class AuctionHouse(commands.Cog):
         self.auctions[msg.id] = auction
         await msg.edit(embed=self._create_embed(auction, ctx.author))
 
-    @commands.command(name="bid")
+    @commands.command(name="bid", help="Place a bid on an active auction. Reply to the auction message to bid. Usage: !bid <amount>")
     async def bid(self, ctx, amount: int):
         if ctx.channel.name != 'the-auction-house' or not ctx.message.reference: return
         auction = self.auctions.get(ctx.message.reference.message_id)

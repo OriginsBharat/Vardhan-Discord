@@ -11,7 +11,7 @@ class JobManager(commands.Cog):
     def __init__(self, bot):
         self.bot, self.jobs, self.next_job_id = bot, {}, 1
 
-    @commands.command(name="post_job")
+    @commands.command(name="post_job", help="Post a job to the job board. Usage: !post_job <payout> \"<title>\"; \"<description>\"")
     async def post_job(self, ctx, payout: int, *, title_and_desc: str):
         if ctx.channel.name != 'jobs': return
         parts = [p.strip().strip('"') for p in title_and_desc.split(';', 1)]
@@ -26,7 +26,7 @@ class JobManager(commands.Cog):
         embed.add_field(name="Payout", value=f"**{payout:,} Rs**").set_footer(text=f"Job ID: {job_id}")
         await ctx.send(embed=embed)
 
-    @commands.command(name="accept_job")
+    @commands.command(name="accept_job", help="Accept a job from the job board. Usage: !accept_job <job_id>")
     async def accept_job(self, ctx, job_id: int):
         if job_id not in self.jobs: return await ctx.send(f":x: Job ID `{job_id}` not found.")
         job, actor_id = self.jobs[job_id], ctx.author.id
@@ -35,7 +35,7 @@ class JobManager(commands.Cog):
         job.assignee_id = actor_id
         await ctx.send(f"✅ {ctx.author.mention} has accepted contract **{job.title}**.")
 
-    @commands.command(name="complete_job")
+    @commands.command(name="complete_job", help="Mark a job you accepted as complete to receive payment. Usage: !complete_job <job_id>")
     async def complete_job(self, ctx, job_id: int):
         if job_id not in self.jobs: return await ctx.send(f":x: Job ID `{job_id}` not found.")
         job, actor_id = self.jobs[job_id], ctx.author.id

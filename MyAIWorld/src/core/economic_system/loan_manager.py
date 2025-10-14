@@ -12,7 +12,7 @@ class LoanManager(commands.Cog):
     def __init__(self, bot):
         self.bot = bot; self.loans = []
 
-    @commands.command(name="request_loan")
+    @commands.command(name="request_loan", help="Request a loan from other users in #bank-of-vardhan. Usage: !request_loan <amount> <days> <reason>")
     async def request_loan(self, ctx, amount: int, days: int, *, reason: str):
         if ctx.channel.name != 'bank-of-vardhan': return
         embed = discord.Embed(title=f"Loan Request: {amount:,} Rs for {days} days", description=f"**Reason:**\n> {reason}", color=0xE74C3C)
@@ -20,7 +20,7 @@ class LoanManager(commands.Cog):
         embed.set_footer(text=f"Use !grant_loan {ctx.author.id} {amount} {days} to fund this loan.")
         await ctx.send(embed=embed)
 
-    @commands.command(name="grant_loan")
+    @commands.command(name="grant_loan", help="Grant a loan to another user. Usage: !grant_loan <@user> <amount> [days=7]")
     async def grant_loan(self, ctx, borrower: discord.Member, amount: int, days: int = 7):
         if ctx.channel.name != 'bank-of-vardhan': return
         lender_id = ctx.author.id

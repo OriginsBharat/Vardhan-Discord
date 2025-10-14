@@ -14,7 +14,7 @@ class ShopManager(commands.Cog):
         self.bot = bot
         self.shops = {} # {owner_id (str persona name): Shop}
 
-    @commands.command(name="open_shop")
+    @commands.command(name="open_shop", help="Open a personal shop. Usage: !open_shop <name>")
     async def open_shop(self, ctx, *, name: str):
         """Opens a personal shop."""
         actor_id = ctx.message.persona.name if hasattr(ctx.message, 'persona') else None
@@ -23,7 +23,7 @@ class ShopManager(commands.Cog):
         self.shops[actor_id] = Shop(actor_id, name)
         await ctx.send(f"🛍️ **{actor_id}** has opened a new shop: **{name}**!")
 
-    @commands.command(name="add_item")
+    @commands.command(name="add_item", help="Add an item to your shop. Usage: !add_item <price> <item_name>")
     async def add_item(self, ctx, price: int, *, item_name: str):
         """Adds an item to your shop."""
         actor_id = ctx.message.persona.name if hasattr(ctx.message, 'persona') else None
@@ -33,7 +33,7 @@ class ShopManager(commands.Cog):
         shop.inventory[item_name.lower()] = price
         await ctx.send(f"✅ Added **{item_name}** to **{shop.name}** for **{price:,} Rs**.")
 
-    @commands.command(name="buy_item")
+    @commands.command(name="buy_item", help="Buy an item from a bot's shop. Usage: !buy_item <OwnerName> <item_name>")
     async def buy_item(self, ctx, owner_name: str, *, item_name: str):
         """Buys an item from a bot's shop."""
         buyer_id = ctx.message.persona.name if hasattr(ctx.message, 'persona') else ctx.author.id
