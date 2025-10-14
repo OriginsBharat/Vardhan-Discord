@@ -46,18 +46,6 @@ class Scheduler:
             if is_currently_active and not persona.is_online:
                 persona.is_online = True
                 print(f"[Scheduler] {persona.name} is now online.")
-                # Post an initial message to their chamber to show they are active
-                try:
-                    channel_name = f"{persona.name.lower()}-s-chamber"
-                    channel = discord.utils.get(self.bot.guilds[0].text_channels, name=channel_name)
-                    if channel:
-                        prompt = f"You are {persona.name}. You have just woken up in your private chamber. Write a single, short, in-character sentence describing what you are doing or thinking."
-                        arrival_text = self.bot.ollama_client.generate_text("dolphin-2.2.1-mistral:7b-q4_K_M", prompt, persona.base_persona)
-                        if "Error:" not in arrival_text:
-                            webhook = await self.bot.get_cog('ControlPanel').get_webhook(channel)
-                            await webhook.send(arrival_text, username=persona.name, avatar_url=self.bot.user.avatar.url if self.bot.user.avatar else None)
-                except Exception as e:
-                    print(f"Failed to send arrival notification for {persona.name}: {e}")
             elif not is_currently_active and persona.is_online:
                 persona.is_online = False
                 print(f"[Scheduler] {persona.name} is now offline.")
@@ -84,9 +72,43 @@ class Scheduler:
         """Gives each bot a chance to perform an autonomous action based on their personality."""
         guild = self.bot.guilds[0]
         if not guild: return
-        for persona in self.bot.persona_manager.get_all_personas():
-            if not persona.is_online: continue
-            # ... (Complex decision-making logic as previously defined) ...
+
+        online_personas = [p for p in self.bot.persona_manager.get_all_personas() if p.is_online]
+        if not online_personas: return
+
+        actor = random.choice(online_personas)
+
+        # More complex and varied action tree
+        # Weights: 50% chance to chat, 20% chance to create, 30% chance to do nothing
+        action_roll = random.randint(1, 10)
+
+        if action_roll <= 5: # 50% chance to chat
+            target = random.choice(online_personas)
+            if target.name == actor.name:
+                channel_name = f"{actor.name.lower()}-s-chamber"
+                prompt = f"You are {actor.name}, currently alone in your private chamber. Write a single, short, in-character sentence describing your current thoughts or actions."
+            else:
+                channel_name = f"{target.name.lower()}-s-chamber"
+                prompt = f"You are {actor.name}. You have just entered the chamber of {target.name}. Write a single, short, in-character sentence to start a conversation with them."
+
+            channel = discord.utils.get(guild.text_channels, name=channel_name)
+            if channel:
+                message = self.bot.ollama_client.generate_text("dolphin-2.2.1-mistral:7b-q4_K_M", prompt, actor.base_persona)
+                if "Error:" not in message:
+                    webhook = await self.bot.get_cog('ControlPanel').get_webhook(channel)
+                    await webhook.send(message, username=actor.name, avatar_url=self.bot.user.avatar.url if self.bot.user.avatar else None)
+
+        elif action_roll <= 7: # 20% chance to create content
+            # For simplicity, we'll just have them write erotica. A full implementation would choose art/etc.
+            erotica_channel = discord.utils.get(guild.text_channels, name="erotica-library")
+            if erotica_channel:
+                prompt = f"You are {actor.name}. Write a short, SFW paragraph of a story. It can be about anything you want."
+                story = self.bot.ollama_client.generate_text("dolphin-2.2.1-mistral:7b-q4_K_M", prompt, actor.base_persona)
+                if "Error:" not in story:
+                    embed = discord.Embed(title=f"A story by {actor.name}", description=f"_{story}_", color=actor.aura_color)
+                    await erotica_channel.send(embed=embed)
+        else: # 30% chance to do nothing
+            print(f"[Scheduler] {actor.name} considered acting, but chose not to.")
 
     async def trigger_event_ai(self):
         """Triggers the Event AI to potentially generate a new world event."""

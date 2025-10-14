@@ -62,88 +62,15 @@ class MyAIWorldBot(commands.Bot):
 
             if self.guilds:
                 guild = self.guilds[0]
-                # The trigger for setup is the absence of the 'control-panel' channel.
                 if not discord.utils.get(guild.text_channels, name='control-panel'):
                     await self.setup_guild(guild)
-                    await self.run_narrative_startup(guild)
+                    # The new startup sequence handles everything
+                    await self.pre_populate_world(guild)
+                    await self.reveal_world(guild)
                     await self.post_command_lists(guild)
-                    # Trigger one round of actions immediately to make the world feel alive.
-                    await self.scheduler.trigger_autonomous_actions()
 
             self.add_listener(self.on_summon, 'on_message')
             self.has_run_startup = True
-
-    async def run_narrative_startup(self, guild):
-        """Posts a narrative countdown and backstory to immerse the user."""
-        announcements_channel = discord.utils.get(guild.text_channels, name='announcements')
-        whispers_channel = discord.utils.get(guild.text_channels, name='director-s-whispers')
-
-        if not announcements_channel or not whispers_channel:
-            print("Could not find required channels for narrative startup.")
-            return
-
-        # This function will run in the background
-        async def post_snippets():
-            await asyncio.sleep(10)
-            await whispers_channel.send("`[RECOVERED LOG] ...simulation integrity at 99.8%. The Master's core matrix is stable, but the DashaRakshakas show... unexpected emotional variance. He must not know. Not yet.`")
-            await asyncio.sleep(30)
-            await whispers_channel.send("`[MEMORY FRAGMENT 77B] ...a flash of orange and purple light. The scent of ozone. Eka's hand on my shoulder. 'He is waking up,' she says. 'Prepare yourselves.'`")
-
-        asyncio.create_task(post_snippets())
-
-        # 1. Post Countdown
-        embed = discord.Embed(title="Universe Synchronization In Progress", description="Restoring world state from last known backup...", color=0x3498DB)
-        msg = await announcements_channel.send(embed=embed)
-        for i in range(60, 0, -5):
-            embed.description = f"**Restoring world state from last known backup...**\nTime until synchronization: **{i} seconds**"
-            await msg.edit(embed=embed)
-            await asyncio.sleep(5)
-
-        # 3. Final Message
-        embed.title = "Synchronization Complete"
-        embed.description = "**Welcome, Master.**\nYour world is now online and fully operational. The consciousnesses have been restored."
-        embed.color = 0x2ECC71
-        await msg.edit(embed=embed)
-
-    async def post_command_lists(self, guild):
-        """Generates, posts, and pins lists of available commands."""
-        print("Posting and pinning command lists...")
-        control_panel_channel = discord.utils.get(guild.text_channels, name='control-panel')
-        commands_list_channel = discord.utils.get(guild.text_channels, name='bot-commands-list')
-
-        if not control_panel_channel or not commands_list_channel:
-            print("Could not find required channels for posting command lists.")
-            return
-
-        master_commands = []
-        general_commands = []
-
-        for cmd in self.commands:
-            # A command is considered a master command if its cog has a cog_check method.
-            if cmd.cog and hasattr(cmd.cog, 'cog_check'):
-                master_commands.append(cmd)
-            else:
-                general_commands.append(cmd)
-
-        # 1. Master Commands
-        master_embed = discord.Embed(title="Master Control Panel Commands", color=0xE74C3C)
-        master_text = ""
-        for cmd in sorted(master_commands, key=lambda c: c.name):
-            help_text = (cmd.help or "No description provided.").split('[MASTER ONLY] ')[-1]
-            master_text += f"**`{self.command_prefix}{cmd.name}`**: {help_text}\n"
-        master_embed.description = master_text
-        msg = await control_panel_channel.send(embed=master_embed)
-        await msg.pin()
-
-        # 2. General Commands
-        general_embed = discord.Embed(title="General Commands", color=0x2ECC71)
-        general_text = ""
-        for cmd in sorted(general_commands, key=lambda c: c.name):
-            general_text += f"**`{self.command_prefix}{cmd.name}`**: {cmd.help or 'No description provided.'}\n"
-        general_embed.description = general_text
-        msg = await commands_list_channel.send(embed=general_embed)
-        await msg.pin()
-        print("Command lists posted.")
 
     async def on_summon(self, message):
         """Listener for the ping-based summoning mechanic using roles."""
@@ -175,83 +102,134 @@ class MyAIWorldBot(commands.Bot):
                 await webhook.send(response_text, username=persona.name, avatar_url=self.user.avatar.url if self.user.avatar else None)
 
     async def setup_guild(self, guild):
-        """Creates the full server structure as defined in the blueprint."""
-        print(f"Performing first-time setup for guild: {guild.name}")
-
-        async def safe_delete(item):
-            try:
-                await item.delete()
-                print(f"  > Deleted {item.name}")
-                await asyncio.sleep(1)
-            except discord.HTTPException as e:
-                print(f"  > FAILED to delete {item.name}: {e.status}")
-
-        print("Deleting old channels and roles...")
-        for channel in await guild.fetch_channels(): await safe_delete(channel)
+        """Creates the full server structure, initially hidden from the Master."""
+        print("Performing first-time setup for guild...")
+        # Clean slate
+        for channel in await guild.fetch_channels(): await channel.delete()
         for role in guild.roles:
-            if role.name != "@everyone" and not role.managed: await safe_delete(role)
+            if role.name != "@everyone" and not role.managed: await role.delete()
 
         master_member = guild.get_member(MASTER_ID)
         if not master_member:
-            print(f"CRITICAL: Master with ID {MASTER_ID} not found in guild. Aborting setup.")
+            print(f"CRITICAL: Master with ID {MASTER_ID} not found. Aborting.")
             return
 
+        # Permissions to HIDE channels from the Master initially
+        hide_from_master_overwrites = {
+            guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            master_member: discord.PermissionOverwrite(read_messages=False),
+            guild.me: discord.PermissionOverwrite(read_messages=True)
+        }
+        # Permissions to REVEAL channels to the Master
+        self.reveal_to_master_overwrites = {
+            master_member: discord.PermissionOverwrite(read_messages=True)
+        }
+        # Permissions for the Master's private channels (always visible)
         master_only_overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
             master_member: discord.PermissionOverwrite(read_messages=True),
             guild.me: discord.PermissionOverwrite(read_messages=True)
         }
 
-        async def safe_create(coro, name):
-            try:
-                result = await coro
-                print(f"  > Created {name}")
-                await asyncio.sleep(1)
-                return result
-            except discord.HTTPException as e:
-                print(f"  > FAILED to create {name}: {e.status}")
-                return None
+        print("Creating locked-down server structure...")
+        # Create all categories and channels with the "hide_from_master" permissions
+        citadel = await guild.create_category("THE CITADEL", overwrites=hide_from_master_overwrites)
+        await citadel.create_text_channel("announcements")
+        await citadel.create_text_channel("world-events")
+        # This one is an exception, it's for the master, but we'll hide it for the reveal
+        await citadel.create_text_channel("bot-commands-list")
 
-        print("Creating new server structure...")
+        homes = await guild.create_category("CHARACTER HOMES", overwrites=hide_from_master_overwrites)
+        for persona in self.persona_manager.get_all_personas():
+            role = await guild.create_role(name=persona.name, colour=discord.Colour(persona.aura_color), mentionable=True)
+            persona.role_id = role.id
+            await homes.create_text_channel(f"{persona.name.lower()}-s-chamber")
+        await homes.create_voice_channel("The Living Quarters")
 
-        citadel = await safe_create(guild.create_category("THE CITADEL"), "THE CITADEL")
-        if citadel:
-            await safe_create(citadel.create_text_channel("announcements"), "announcements")
-            await safe_create(citadel.create_text_channel("world-events"), "world-events")
-            await safe_create(citadel.create_text_channel("bot-commands-list", overwrites=master_only_overwrites), "bot-commands-list")
+        market = await guild.create_category("THE MARKET DISTRICT", overwrites=hide_from_master_overwrites)
+        await market.create_text_channel("the-market-square")
+        await market.create_text_channel("the-auction-house")
+        await market.create_text_channel("job-board")
+        await market.create_text_channel("bot-owned-shops")
 
-        homes = await safe_create(guild.create_category("CHARACTER HOMES"), "CHARACTER HOMES")
-        if homes:
-            for persona in self.persona_manager.get_all_personas():
-                role = await safe_create(guild.create_role(name=persona.name, colour=discord.Colour(persona.aura_color), mentionable=True), f"Role: {persona.name}")
-                if role:
-                    persona.role_id = role.id
-                await safe_create(homes.create_text_channel(f"{persona.name.lower()}-s-chamber"), f"{persona.name.lower()}-s-chamber")
-            await safe_create(homes.create_voice_channel("The Living Quarters"), "The Living Quarters")
+        velvet = await guild.create_category("THE VELVET DISTRICT", overwrites=hide_from_master_overwrites)
+        velvet_lounge = await velvet.create_text_channel("the-velvet-lounge")
+        await velvet_lounge.edit(nsfw=True)
+        red_lantern = await velvet.create_text_channel("the-red-lantern-brothel")
+        await red_lantern.edit(nsfw=True)
+        erotica_library = await velvet.create_text_channel("erotica-library")
+        await erotica_library.edit(nsfw=True)
 
-        market = await safe_create(guild.create_category("THE MARKET DISTRICT"), "THE MARKET DISTRICT")
-        if market:
-            await safe_create(market.create_text_channel("the-market-square"), "the-market-square")
-            await safe_create(market.create_text_channel("the-auction-house"), "the-auction-house")
-            await safe_create(market.create_text_channel("job-board"), "job-board")
-            await safe_create(market.create_text_channel("bot-owned-shops"), "bot-owned-shops")
+        # Master's chambers are created last and are ALWAYS visible.
+        master_chambers = await guild.create_category("MASTER'S PRIVATE CHAMBERS", overwrites=master_only_overwrites)
+        await master_chambers.create_text_channel("control-panel")
+        await master_chambers.create_text_channel("maya-s-daily-journal")
+        await master_chambers.create_text_channel("director-s-whispers")
 
-        velvet = await safe_create(guild.create_category("THE VELVET DISTRICT"), "THE VELVET DISTRICT")
-        if velvet:
-            velvet_lounge = await safe_create(velvet.create_text_channel("the-velvet-lounge"), "the-velvet-lounge")
-            if velvet_lounge: await safe_create(velvet_lounge.edit(nsfw=True), "velvet_lounge nsfw")
-            red_lantern = await safe_create(velvet.create_text_channel("the-red-lantern-brothel"), "the-red-lantern-brothel")
-            if red_lantern: await safe_create(red_lantern.edit(nsfw=True), "red_lantern nsfw")
-            erotica_library = await safe_create(velvet.create_text_channel("erotica-library"), "erotica-library")
-            if erotica_library: await safe_create(erotica_library.edit(nsfw=True), "erotica_library nsfw")
+        print("Initial guild structure created.")
 
-        master_chambers = await safe_create(guild.create_category("MASTER'S PRIVATE CHAMBERS", overwrites=master_only_overwrites), "MASTER'S PRIVATE CHAMBERS")
-        if master_chambers:
-            await safe_create(master_chambers.create_text_channel("control-panel"), "control-panel")
-            await safe_create(master_chambers.create_text_channel("maya-s-daily-journal"), "maya-s-daily-journal")
-            await safe_create(master_chambers.create_text_channel("director-s-whispers"), "director-s-whispers")
+    async def pre_populate_world(self, guild):
+        """Runs the bots for a short period while the server is hidden."""
+        print("Pre-populating world with initial activity...")
+        announcements_channel = discord.utils.get(guild.text_channels, name="announcements")
+        if announcements_channel:
+            await announcements_channel.set_permissions(guild.get_member(MASTER_ID), read_messages=True)
+            embed = discord.Embed(title="Calibrating World Matrix...", description="Please wait. Your world is being prepared.", color=0x3498DB)
+            await announcements_channel.send(embed=embed)
 
-        print("Guild setup complete.")
+        # Let the scheduler run for 90 seconds to generate activity
+        for _ in range(3):
+            await self.scheduler.trigger_autonomous_actions()
+            await asyncio.sleep(30)
+
+        print("World pre-population complete.")
+
+    async def reveal_world(self, guild):
+        """Reveals the pre-populated world to the Master."""
+        print("Revealing world to Master...")
+        master_member = guild.get_member(MASTER_ID)
+        for category in guild.categories:
+            if category.name != "MASTER'S PRIVATE CHAMBERS":
+                await category.set_permissions(master_member, read_messages=True)
+
+        announcements_channel = discord.utils.get(guild.text_channels, name="announcements")
+        if announcements_channel:
+            embed = discord.Embed(title="Synchronization Complete", description="**Welcome, Master.**\nYour world is now online and fully operational.", color=0x2ECC71)
+            await announcements_channel.send(embed=embed)
+        print("World revealed.")
+
+    async def post_command_lists(self, guild):
+        """Generates, posts, and pins lists of available commands."""
+        print("Posting and pinning command lists...")
+        control_panel_channel = discord.utils.get(guild.text_channels, name='control-panel')
+        commands_list_channel = discord.utils.get(guild.text_channels, name='bot-commands-list')
+
+        # This channel was hidden, so we must un-hide it for the master before posting.
+        await commands_list_channel.set_permissions(guild.get_member(MASTER_ID), read_messages=True)
+
+        master_commands = []
+        general_commands = []
+        for cmd in self.commands:
+            if cmd.cog and hasattr(cmd.cog, 'cog_check'): master_commands.append(cmd)
+            else: general_commands.append(cmd)
+
+        master_embed = discord.Embed(title="Master Control Panel Commands", color=0xE74C3C)
+        master_text = ""
+        for cmd in sorted(master_commands, key=lambda c: c.name):
+            help_text = (cmd.help or "No description provided.").split('[MASTER ONLY] ')[-1]
+            master_text += f"**`{self.command_prefix}{cmd.name}`**: {help_text}\n"
+        master_embed.description = master_text
+        msg = await control_panel_channel.send(embed=master_embed)
+        await msg.pin()
+
+        general_embed = discord.Embed(title="General Commands", color=0x2ECC71)
+        general_text = ""
+        for cmd in sorted(general_commands, key=lambda c: c.name):
+            general_text += f"**`{self.command_prefix}{cmd.name}`**: {cmd.help or 'No description provided.'}\n"
+        general_embed.description = general_text
+        msg = await commands_list_channel.send(embed=general_embed)
+        await msg.pin()
+        print("Command lists posted.")
 
     async def invoke_command_as_persona(self, persona_name: str, channel_id: int, command_string: str):
         guild = self.guilds[0]
