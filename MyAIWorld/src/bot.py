@@ -135,7 +135,7 @@ class MyAIWorldBot(commands.Bot):
         # CHARACTER HOMES
         homes = await guild.create_category("CHARACTER HOMES"); await asyncio.sleep(1)
         for persona in self.persona_manager.get_all_personas():
-            role = await guild.create_role(name=persona.name, colour=discord.Colour(int(persona.aura_color, 16)), mentionable=True); await asyncio.sleep(1)
+            role = await guild.create_role(name=persona.name, colour=discord.Colour(persona.aura_color), mentionable=True); await asyncio.sleep(1)
             persona.role_id = role.id # Assign role ID back to persona object
             home_channel_name = f"{persona.name.lower()}-s-chamber"
             await guild.create_text_channel(home_channel_name, category=homes); await asyncio.sleep(1)
