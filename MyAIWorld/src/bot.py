@@ -57,22 +57,24 @@ class MyAIWorldBot(commands.Bot):
         if not self.has_run_startup:
             await self.wait_until_ready()
 
-            # This is now the single point of entry for simulation.
-            # It will block and run the primordial simulation on the first run,
-            # or run a quick catch-up on subsequent runs.
-            # It returns True only if the primordial (first-run) simulation was executed.
+            # First, wait for the AI server to be ready to prevent a race condition.
+            server_ready = await self.ollama_client.wait_for_server_ready()
+            if not server_ready:
+                print("Aborting startup as AI server is not available.")
+                await self.close()
+                return
+
+            # Now, run the simulation.
             is_first_run = await self.simulation_manager.run_simulation()
 
-            # If it wasn't the first run, we still need to check if we should post command lists,
-            # in case they were deleted.
+            # If it wasn't the first run, post command lists if they're missing.
             if not is_first_run and self.guilds:
                 guild = self.guilds[0]
                 control_panel_channel = discord.utils.get(guild.text_channels, name='control-panel')
-                # Check if the channel exists and is empty
                 if control_panel_channel and not any(await control_panel_channel.history(limit=1).flatten()):
                     await self.post_command_lists(guild)
 
-            # The live scheduler for real-time events always starts after the simulation is complete.
+            # Start the live scheduler for real-time events.
             self.scheduler.start()
 
             self.add_listener(self.on_summon, 'on_message')
