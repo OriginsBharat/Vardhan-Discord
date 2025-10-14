@@ -34,13 +34,14 @@ class Scheduler:
             wake_time, sleep_time = persona.schedule.get("wake", 7), persona.schedule.get("sleep", 23)
 
             is_currently_active = False
-            # This logic correctly handles overnight schedules (e.g., wake at 22, sleep at 10)
-            if wake_time < sleep_time:
-                # Standard daytime schedule
-                is_currently_active = wake_time <= current_hour < sleep_time
-            else:
-                # Overnight schedule
+            # This new logic is simpler and correctly handles all cases, including overnight schedules.
+            if wake_time > sleep_time:
+                # Overnight schedule (e.g., wakes at 22, sleeps at 10)
+                # They are active if the time is AFTER wake OR BEFORE sleep.
                 is_currently_active = current_hour >= wake_time or current_hour < sleep_time
+            else:
+                # Standard daytime schedule (e.g., wakes at 7, sleeps at 23)
+                is_currently_active = wake_time <= current_hour < sleep_time
 
             if is_currently_active and not persona.is_online:
                 persona.is_online = True
