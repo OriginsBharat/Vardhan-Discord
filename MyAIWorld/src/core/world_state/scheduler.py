@@ -68,7 +68,7 @@ class Scheduler:
         if hasattr(self.bot, 'loan_manager'):
             await self.bot.loan_manager.check_for_defaults()
 
-    async def trigger_autonomous_actions(self):
+    async def trigger_autonomous_actions(self, force_action=False):
         """Gives each bot a chance to perform an autonomous action based on their personality."""
         guild = self.bot.guilds[0]
         if not guild: return
@@ -78,10 +78,21 @@ class Scheduler:
 
         actor = random.choice(online_personas)
 
-        # More complex and varied action tree
+        # Determine if the bot will act or not. If force_action is True, it MUST act.
+        will_act = True
+        if not force_action:
+            if random.randint(1, 10) > 7: # 30% chance of not acting
+                will_act = False
+
+        if not will_act:
+            print(f"[Scheduler] {actor.name} considered acting, but chose not to.")
+            return
+
+        # If we've reached here, the bot will perform an action.
+        # 70% chance to chat, 30% chance to create content.
         action_roll = random.randint(1, 10)
 
-        if action_roll <= 5:  # 50% chance to chat
+        if action_roll <= 7:  # 70% chance to chat
             target_persona = random.choice(online_personas)
             if target_persona.name == actor.name:
                 channel = discord.utils.get(guild.text_channels, name=f"{actor.name.lower()}-s-chamber")
@@ -96,7 +107,7 @@ class Scheduler:
                     webhook = await self.bot.get_cog('ControlPanel').get_webhook(channel)
                     await webhook.send(message, username=actor.name, avatar_url=self.bot.user.avatar.url if self.bot.user.avatar else None)
 
-        elif action_roll <= 7:  # 20% chance to create content
+        else:  # 30% chance to create content
             content_type = random.choice(['art', 'story'])
             if content_type == 'art':
                 channel = discord.utils.get(guild.text_channels, name="art-gallery")
@@ -112,9 +123,6 @@ class Scheduler:
                 if "Error:" not in story and channel:
                     embed = discord.Embed(title=f"A story by {actor.name}", description=f"_{story}_", color=actor.aura_color)
                     await channel.send(embed=embed)
-
-        else:  # 30% chance to do nothing
-            print(f"[Scheduler] {actor.name} considered acting, but chose not to.")
 
     async def trigger_event_ai(self):
         """Triggers the Event AI to potentially generate a new world event."""
