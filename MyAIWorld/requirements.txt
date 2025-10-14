@@ -1,0 +1,11 @@
+discord.py
+python-dotenv
+pinecone-client
+customtkinter
+requests
+pillow
+aiohttp
+websockets
+numpy
+winshell
+pywin32
