@@ -6,6 +6,7 @@ import subprocess
 import sys
 import ctypes
 import platform
+import threading
 
 class SetupWizard(ctk.CTk):
     def __init__(self):
@@ -31,7 +32,6 @@ class SetupWizard(ctk.CTk):
         self.secrets_frame = ctk.CTkFrame(self.main_frame)
         self.secrets_frame.grid(row=2, column=0, columnspan=3, padx=20, pady=10, sticky="ew")
         self.secrets_frame.grid_columnconfigure(1, weight=1)
-        # ... (secrets entries are populated by populate_secrets_and_paths)
 
         # --- File Paths ---
         paths_label = ctk.CTkLabel(self.main_frame, text="AI Engine Folder Paths", font=ctk.CTkFont(size=16, weight="bold"))
@@ -39,7 +39,6 @@ class SetupWizard(ctk.CTk):
         self.paths_frame = ctk.CTkFrame(self.main_frame)
         self.paths_frame.grid(row=4, column=0, columnspan=3, padx=20, pady=10, sticky="ew")
         self.paths_frame.grid_columnconfigure(1, weight=1)
-        # ... (paths entries are populated by populate_secrets_and_paths)
 
         # --- Voices ---
         self.voices_label = ctk.CTkLabel(self.main_frame, text="Character Voice Files (.wav)", font=ctk.CTkFont(size=16, weight="bold"))
@@ -48,7 +47,6 @@ class SetupWizard(ctk.CTk):
         self.voices_frame.grid(row=6, column=0, columnspan=3, padx=20, pady=10, sticky="ew")
         self.voices_frame.grid_columnconfigure(1, weight=1)
         self.voice_entries = {}
-        # ... (voice entries are populated below)
 
         # --- Kink Profiles ---
         self.kinks_label = ctk.CTkLabel(self.main_frame, text="Character Kink Profiles", font=ctk.CTkFont(size=16, weight="bold"))
@@ -57,7 +55,6 @@ class SetupWizard(ctk.CTk):
         self.kinks_frame.grid(row=8, column=0, columnspan=3, padx=20, pady=10, sticky="ew")
         self.kinks_frame.grid_columnconfigure(1, weight=1)
         self.kink_entries = {}
-        # ... (kink entries are populated below)
 
         # --- Setup Button ---
         self.setup_button = ctk.CTkButton(self.main_frame, text="Begin World Setup", command=self.begin_setup, font=ctk.CTkFont(size=14, weight="bold"))
@@ -90,54 +87,40 @@ class SetupWizard(ctk.CTk):
         self.comfyui_path_entry = ctk.CTkEntry(self.paths_frame)
         self.comfyui_path_entry.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
         ctk.CTkButton(self.paths_frame, text="Browse", width=70, command=lambda: self.browse_directory(self.comfyui_path_entry)).grid(row=1, column=2, padx=10, pady=5)
-        ctk.CTkLabel(self.paths_frame, text="XTTSv2 Server Path:").grid(row=2, column=0, padx=10, pady=5, sticky="w")
-        self.xtts_path_entry = ctk.CTkEntry(self.paths_frame)
-        self.xtts_path_entry.grid(row=2, column=1, padx=10, pady=5, sticky="ew")
-        ctk.CTkButton(self.paths_frame, text="Browse", width=70, command=lambda: self.browse_directory(self.xtts_path_entry)).grid(row=2, column=2, padx=10, pady=5)
 
         # Voices & Kinks
         try:
-            with open("data/character_canon.json", "r") as f:
+            with open("MyAIWorld/data/character_canon.json", "r") as f:
                 characters = json.load(f)
             for i, name in enumerate(characters.keys()):
-                # Voices
                 ctk.CTkLabel(self.voices_frame, text=f"{name} Voice:").grid(row=i, column=0, padx=10, pady=5, sticky="w")
                 v_entry = ctk.CTkEntry(self.voices_frame)
                 v_entry.grid(row=i, column=1, padx=10, pady=5, sticky="ew")
                 ctk.CTkButton(self.voices_frame, text="Browse", width=70, command=lambda e=v_entry: self.browse_file(e)).grid(row=i, column=2, padx=10, pady=5)
                 self.voice_entries[name] = v_entry
-                # Kinks
                 ctk.CTkLabel(self.kinks_frame, text=f"{name}:").grid(row=i, column=0, padx=10, pady=5, sticky="w")
                 k_entry = ctk.CTkEntry(self.kinks_frame, placeholder_text="e.g., praise, domination")
                 k_entry.grid(row=i, column=1, padx=10, pady=5, sticky="ew")
                 self.kink_entries[name] = k_entry
         except FileNotFoundError:
-            messagebox.showerror("Error", "character_canon.json not found!")
+            messagebox.showerror("Error", "MyAIWorld/data/character_canon.json not found!")
 
     def find_path(self, program_name, executable_name):
         if platform.system() != "Windows": return None
-        search_paths = [
-            os.getenv("ProgramFiles"),
-            os.getenv("ProgramFiles(x86)"),
-            os.path.join(os.getenv("LOCALAPPDATA")),
-            os.path.expanduser("~")
-        ]
+        search_paths = [ os.getenv("ProgramFiles"), os.getenv("ProgramFiles(x86)"), os.path.join(os.getenv("LOCALAPPDATA")), os.path.expanduser("~") ]
         for path in search_paths:
             if not path: continue
             for root, dirs, files in os.walk(path):
                 if program_name in dirs or executable_name in files:
                     for d in dirs:
-                        if d == program_name:
-                            return os.path.join(root, d)
+                        if d == program_name: return os.path.join(root, d)
                     for f in files:
-                        if f == executable_name:
-                            return root
+                        if f == executable_name: return root
         return None
 
     def auto_detect_paths(self):
-        ollama_path = self.find_path("Ollama", "ollama-app.exe")
+        ollama_path = self.find_path("Ollama", "ollama.exe")
         if ollama_path: self.ollama_path_entry.insert(0, ollama_path)
-        # Add similar logic for ComfyUI and XTTS if they have predictable names
         messagebox.showinfo("Auto-Detect", "Attempted to auto-detect AI engine paths. Please verify them.")
 
     def browse_directory(self, entry_widget):
@@ -148,17 +131,14 @@ class SetupWizard(ctk.CTk):
         filepath = filedialog.askopenfilename(filetypes=[("WAV files", "*.wav")])
         if filepath: entry_widget.delete(0, "end"); entry_widget.insert(0, filepath)
 
-    def is_admin(self):
-        try: return ctypes.windll.shell32.IsUserAnAdmin()
-        except: return False
-
     def begin_setup(self):
-        # Create voices directory
-        os.makedirs("data/voices", exist_ok=True)
-
         if not all([self.discord_token_entry.get(), self.pinecone_key_entry.get(), self.pinecone_env_entry.get(), self.master_id_entry.get()]):
             messagebox.showerror("Error", "All secret fields must be filled out.")
             return
+
+        # Ensure data directories exist
+        os.makedirs("MyAIWorld/data", exist_ok=True)
+        os.makedirs("MyAIWorld/data/voices", exist_ok=True)
 
         with open(".env", "w") as f:
             f.write(f"DISCORD_TOKEN={self.discord_token_entry.get()}\n")
@@ -167,26 +147,39 @@ class SetupWizard(ctk.CTk):
             f.write(f"MASTER_ID={self.master_id_entry.get()}\n")
             f.write(f"OLLAMA_PATH={self.ollama_path_entry.get()}\n")
             f.write(f"COMFYUI_PATH={self.comfyui_path_entry.get()}\n")
-            f.write(f"XTTS_PATH={self.xtts_path_entry.get()}\n")
             for name, entry in self.voice_entries.items():
                 f.write(f"VOICE_{name.upper()}={entry.get()}\n")
 
         kinks_data = {name: [k.strip() for k in entry.get().split(',')] for name, entry in self.kink_entries.items()}
-        with open("data/character_kinks.json", "w") as f:
+        with open("MyAIWorld/data/character_kinks.json", "w") as f:
             json.dump(kinks_data, f, indent=4)
 
         # Create the invisible VBS launcher
+        self.create_vbs_launcher()
+
+        # Pull the required Ollama model
+        self.pull_ollama_model()
+
+    def create_vbs_launcher(self):
+        """Creates a VBScript to launch all necessary background services silently and robustly."""
+        ollama_exe_path = os.path.abspath(os.path.join(self.ollama_path_entry.get(), 'ollama.exe'))
+        comfyui_python_path = os.path.abspath(os.path.join(self.comfyui_path_entry.get(), 'python_embeded', 'python.exe'))
+        comfyui_main_path = os.path.abspath(os.path.join(self.comfyui_path_entry.get(), 'main.py'))
+        start_world_bat_path = os.path.abspath(os.path.join(os.getcwd(), 'start_world.bat'))
+
+        # Simplified VBScript. The OLLAMA_HOST variable ensures the server binds correctly.
+        # The OLLAMA_MODELS variable is removed as it was an incorrect fix.
         vbs_script_content = f'''
 Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run "cmd /c start """" ""{os.path.join(self.ollama_path_entry.get(), 'ollama.exe')}"" serve", 0
-WshShell.Run "cmd /c start """" ""{os.path.join(self.comfyui_path_entry.get(), 'python_embeded', 'python.exe')}"" -s ""{os.path.join(self.comfyui_path_entry.get(), 'main.py')}"" --windows-standalone-build", 0
-WshShell.Run "cmd /c cd /d ""{os.getcwd()}"" && start_world.bat", 0
+WshShell.Environment("PROCESS")("OLLAMA_HOST") = "127.0.0.1"
+WshShell.Run "cmd /c ""{ollama_exe_path}"" serve", 0, false
+WshShell.Run "cmd /c ""{comfyui_python_path}"" ""{comfyui_main_path}"" --windows-standalone-build", 0, false
+WshShell.Run "cmd /c ""{start_world_bat_path}""", 0, false
 Set WshShell = Nothing
 '''
         with open("invisible_launcher.vbs", "w") as f:
             f.write(vbs_script_content)
 
-        # Place launcher in startup folder
         if platform.system() == "Windows":
             startup_folder = os.path.join(os.getenv('APPDATA'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
             if os.path.isdir(startup_folder):
@@ -198,7 +191,35 @@ Set WshShell = Nothing
         else:
             messagebox.showinfo("Success", "Configuration saved. Auto-start is only supported on Windows.")
 
-        self.destroy()
+    def pull_ollama_model(self):
+        """Pulls the required Ollama model in a separate thread to avoid freezing the GUI."""
+        model_name = "dolphin-2.2.1-mistral:7b-q4_K_M"
+
+        progress_window = ctk.CTkToplevel(self)
+        progress_window.title("Downloading AI Model")
+        progress_window.geometry("400x150")
+        progress_window.transient(self)
+        progress_window.grab_set()
+
+        label = ctk.CTkLabel(progress_window, text=f"Performing first-time setup.\nDownloading required AI model:\n\n{model_name}\n\nThis may take several minutes and will happen in a separate window.\nPlease do not close it.", wraplength=380)
+        label.pack(pady=20, padx=20)
+
+        def do_pull():
+            try:
+                ollama_exe_path = os.path.abspath(os.path.join(self.ollama_path_entry.get(), "ollama.exe"))
+                command = f'"{ollama_exe_path}" pull {model_name}'
+                subprocess.run(command, check=True, shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+                messagebox.showinfo("Success", f"Successfully downloaded AI model: {model_name}")
+            except subprocess.CalledProcessError as e:
+                messagebox.showerror("Error", f"Failed to download AI model. Please run 'ollama pull {model_name}' manually.\nError: {e}")
+            except FileNotFoundError:
+                messagebox.showerror("Error", "Could not find ollama.exe. Please ensure the path is correct.")
+            finally:
+                progress_window.destroy()
+                self.destroy()
+
+        download_thread = threading.Thread(target=do_pull)
+        download_thread.start()
 
 if __name__ == "__main__":
     app = SetupWizard()

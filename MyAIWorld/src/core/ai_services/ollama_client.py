@@ -9,50 +9,53 @@ class OllamaClient:
     """
     def __init__(self, host="http://127.0.0.1:11434"):
         self.host = host
-        self.api_url = f"{host}/api/generate"
-        self.health_check_url = f"{host}/"
+        # The correct endpoint for chat-like generation is /api/chat.
+        self.api_url = f"{host}/api/chat"
+        # The health check endpoint remains the same, as it's a good indicator of the server being up.
+        self.health_check_url = f"{host}/api/tags"
 
-    async def wait_for_server_ready(self, timeout=120):
+    async def wait_for_server_ready(self, timeout=60):
         """
-        Waits for the Ollama server to be responsive by polling its root endpoint.
+        Waits for the Ollama server's API to be responsive. Simplified and faster.
         """
-        print("[Health Check] Waiting for Ollama server to become available...")
+        print("[Health Check] Waiting for Ollama API to become available...")
         start_time = time.time()
         while time.time() - start_time < timeout:
             try:
-                # Run the synchronous requests.get in a separate thread
-                response = await asyncio.to_thread(
-                    requests.get, self.health_check_url, timeout=2
-                )
+                response = await asyncio.to_thread(requests.get, self.health_check_url, timeout=2)
                 if response.status_code == 200:
-                    print("[Health Check] Ollama server is online.")
+                    print("[Health Check] Ollama API is online and ready.")
                     return True
             except requests.exceptions.RequestException:
-                # This is expected if the server is not up yet, so we just wait and retry.
                 pass
+            await asyncio.sleep(2)
 
-            await asyncio.sleep(3)
-
-        print(f"[Health Check] CRITICAL: Ollama server did not become available within {timeout} seconds.")
+        print(f"[Health Check] CRITICAL: Ollama API did not become available within {timeout} seconds.")
         return False
 
     def generate_text(self, model: str, prompt: str, system_prompt: str = None, stream: bool = False):
         """
-        Generates text using a specified model and prompt.
+        Generates text using the /api/chat endpoint, which is the correct endpoint for this task.
         """
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
         payload = {
             "model": model,
-            "prompt": prompt,
+            "messages": messages,
             "stream": stream
         }
-        if system_prompt:
-            payload["system"] = system_prompt
 
         try:
             response = requests.post(self.api_url, json=payload, timeout=120)
             response.raise_for_status()
+
+            # The response structure for /api/chat is different.
             response_data = response.json()
-            return response_data.get("response", "").strip()
+            # The actual message content is nested inside the 'message' object.
+            return response_data.get("message", {}).get("content", "").strip()
 
         except requests.exceptions.RequestException as e:
             error_message = f"Error connecting to Ollama server at {self.host}: {e}"
