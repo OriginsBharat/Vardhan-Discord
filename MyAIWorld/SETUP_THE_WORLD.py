@@ -62,7 +62,7 @@ class SetupWizard(ctk.CTk):
         # --- Setup Button ---
         self.setup_button = ctk.CTkButton(self.main_frame, text="Begin World Setup", command=self.begin_setup, font=ctk.CTkFont(size=14, weight="bold"))
         self.setup_button.grid(row=9, column=0, columnspan=3, padx=20, pady=20, sticky="ew")
-        
+
         self.populate_all_fields()
         self.auto_detect_paths()
 
@@ -94,7 +94,7 @@ class SetupWizard(ctk.CTk):
         self.xtts_path_entry = ctk.CTkEntry(self.paths_frame)
         self.xtts_path_entry.grid(row=2, column=1, padx=10, pady=5, sticky="ew")
         ctk.CTkButton(self.paths_frame, text="Browse", width=70, command=lambda: self.browse_directory(self.xtts_path_entry)).grid(row=2, column=2, padx=10, pady=5)
-        
+
         # Voices & Kinks
         try:
             with open("data/character_canon.json", "r") as f:
@@ -143,7 +143,7 @@ class SetupWizard(ctk.CTk):
     def browse_directory(self, entry_widget):
         directory = filedialog.askdirectory()
         if directory: entry_widget.delete(0, "end"); entry_widget.insert(0, directory)
-            
+
     def browse_file(self, entry_widget):
         filepath = filedialog.askopenfilename(filetypes=[("WAV files", "*.wav")])
         if filepath: entry_widget.delete(0, "end"); entry_widget.insert(0, filepath)
@@ -155,12 +155,11 @@ class SetupWizard(ctk.CTk):
     def begin_setup(self):
         # Create voices directory
         os.makedirs("data/voices", exist_ok=True)
-        # ... (rest of the setup logic from previous versions)
-        # Validation, writing .env, saving kinks, installing deps, creating scripts, adding to startup
+
         if not all([self.discord_token_entry.get(), self.pinecone_key_entry.get(), self.pinecone_env_entry.get(), self.master_id_entry.get()]):
             messagebox.showerror("Error", "All secret fields must be filled out.")
             return
-        
+
         with open(".env", "w") as f:
             f.write(f"DISCORD_TOKEN={self.discord_token_entry.get()}\n")
             f.write(f"PINECONE_API_KEY={self.pinecone_key_entry.get()}\n")
@@ -171,13 +170,34 @@ class SetupWizard(ctk.CTk):
             f.write(f"XTTS_PATH={self.xtts_path_entry.get()}\n")
             for name, entry in self.voice_entries.items():
                 f.write(f"VOICE_{name.upper()}={entry.get()}\n")
-            
+
         kinks_data = {name: [k.strip() for k in entry.get().split(',')] for name, entry in self.kink_entries.items()}
         with open("data/character_kinks.json", "w") as f:
             json.dump(kinks_data, f, indent=4)
-        
-        # ... (The rest is the same as before)
-        messagebox.showinfo("Success", "Configuration saved. The rest of the setup process would continue here.")
+
+        # Create the invisible VBS launcher
+        vbs_script_content = f'''
+Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run "cmd /c ""{os.path.join(self.ollama_path_entry.get(), 'ollama-app.exe')}"" serve", 0
+WshShell.Run "cmd /c cd /d ""{self.comfyui_path_entry.get()}"" && .\\python_embeded\\python.exe .\\main.py --windows-standalone-build", 0
+WshShell.Run "wscript.exe ""{os.path.join(os.getcwd(), 'invisible_launcher.vbs')}""", 0
+Set WshShell = Nothing
+'''
+        with open("invisible_launcher.vbs", "w") as f:
+            f.write(vbs_script_content)
+
+        # Place launcher in startup folder
+        if platform.system() == "Windows":
+            startup_folder = os.path.join(os.getenv('APPDATA'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
+            if os.path.isdir(startup_folder):
+                import shutil
+                shutil.copy("invisible_launcher.vbs", startup_folder)
+                messagebox.showinfo("Success", "Configuration saved and auto-start enabled.")
+            else:
+                messagebox.showwarning("Warning", "Could not find Windows startup folder. You will need to start the world manually.")
+        else:
+            messagebox.showinfo("Success", "Configuration saved. Auto-start is only supported on Windows.")
+
         self.destroy()
 
 if __name__ == "__main__":
