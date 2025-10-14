@@ -178,9 +178,9 @@ class SetupWizard(ctk.CTk):
         # Create the invisible VBS launcher
         vbs_script_content = f'''
 Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run "cmd /c ""{os.path.join(self.ollama_path_entry.get(), 'ollama-app.exe')}"" serve", 0
+WshShell.Run "cmd /c ""{os.path.join(self.ollama_path_entry.get(), 'ollama.exe')}"" serve", 0
 WshShell.Run "cmd /c cd /d ""{self.comfyui_path_entry.get()}"" && .\\python_embeded\\python.exe .\\main.py --windows-standalone-build", 0
-WshShell.Run "wscript.exe ""{os.path.join(os.getcwd(), 'invisible_launcher.vbs')}""", 0
+WshShell.Run "cmd /c cd /d ""{os.getcwd()}"" && start_world.bat", 0
 Set WshShell = Nothing
 '''
         with open("invisible_launcher.vbs", "w") as f:
