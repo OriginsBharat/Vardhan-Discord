@@ -58,15 +58,18 @@ class MyAIWorldBot(commands.Bot):
             await self.wait_until_ready()
 
             self.simulation_manager.run_offline_simulation()
-            self.scheduler.start()
 
             if self.guilds:
                 guild = self.guilds[0]
                 if not discord.utils.get(guild.text_channels, name='control-panel'):
                     await self.setup_guild(guild)
+                    self.scheduler.start() # Start scheduler AFTER guild is set up
+                    await asyncio.sleep(2) # Give scheduler a moment to run first check
                     await self.pre_populate_world(guild)
                     await self.reveal_world(guild)
                     await self.post_command_lists(guild)
+                else:
+                    self.scheduler.start()
 
             self.add_listener(self.on_summon, 'on_message')
             self.has_run_startup = True
@@ -138,7 +141,7 @@ class MyAIWorldBot(commands.Bot):
             role = await guild.create_role(name=persona.name, colour=discord.Colour(persona.aura_color), mentionable=True)
             persona.role_id = role.id
             await homes.create_text_channel(f"{persona.name.lower()}-s-chamber")
-        await homes.create_voice_channel("The Living Quarters")
+            await homes.create_voice_channel(f"{persona.name.lower()}-s-boudoir")
 
         market = await guild.create_category("THE MARKET DISTRICT", overwrites=hide_from_master_overwrites)
         await market.create_text_channel("the-market-square")

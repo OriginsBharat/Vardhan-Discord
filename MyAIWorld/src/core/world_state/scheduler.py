@@ -79,35 +79,41 @@ class Scheduler:
         actor = random.choice(online_personas)
 
         # More complex and varied action tree
-        # Weights: 50% chance to chat, 20% chance to create, 30% chance to do nothing
         action_roll = random.randint(1, 10)
 
-        if action_roll <= 5: # 50% chance to chat
-            target = random.choice(online_personas)
-            if target.name == actor.name:
-                channel_name = f"{actor.name.lower()}-s-chamber"
+        if action_roll <= 5:  # 50% chance to chat
+            target_persona = random.choice(online_personas)
+            if target_persona.name == actor.name:
+                channel = discord.utils.get(guild.text_channels, name=f"{actor.name.lower()}-s-chamber")
                 prompt = f"You are {actor.name}, currently alone in your private chamber. Write a single, short, in-character sentence describing your current thoughts or actions."
             else:
-                channel_name = f"{target.name.lower()}-s-chamber"
-                prompt = f"You are {actor.name}. You have just entered the chamber of {target.name}. Write a single, short, in-character sentence to start a conversation with them."
+                channel = discord.utils.get(guild.text_channels, name=f"{target_persona.name.lower()}-s-chamber")
+                prompt = f"You are {actor.name}. You have just entered the chamber of {target_persona.name}. Write a single, short, in-character sentence to start a conversation with them."
 
-            channel = discord.utils.get(guild.text_channels, name=channel_name)
             if channel:
                 message = self.bot.ollama_client.generate_text("dolphin-2.2.1-mistral:7b-q4_K_M", prompt, actor.base_persona)
                 if "Error:" not in message:
                     webhook = await self.bot.get_cog('ControlPanel').get_webhook(channel)
                     await webhook.send(message, username=actor.name, avatar_url=self.bot.user.avatar.url if self.bot.user.avatar else None)
 
-        elif action_roll <= 7: # 20% chance to create content
-            # For simplicity, we'll just have them write erotica. A full implementation would choose art/etc.
-            erotica_channel = discord.utils.get(guild.text_channels, name="erotica-library")
-            if erotica_channel:
+        elif action_roll <= 7:  # 20% chance to create content
+            content_type = random.choice(['art', 'story'])
+            if content_type == 'art':
+                channel = discord.utils.get(guild.text_channels, name="art-gallery")
+                prompt = f"You are {actor.name}. Generate a prompt for an image that represents your current mood or a recent thought."
+                image_prompt = self.bot.ollama_client.generate_text("dolphin-2.2.1-mistral:7b-q4_K_M", prompt, actor.base_persona)
+                if "Error:" not in image_prompt and channel:
+                    await channel.send(f"_{actor.name} begins to create a new piece of art, inspired by the prompt: '{image_prompt}'..._")
+                    await self.bot.get_cog('Creative').imagine(channel, prompt=image_prompt)
+            else:
+                channel = discord.utils.get(guild.text_channels, name="erotica-library")
                 prompt = f"You are {actor.name}. Write a short, SFW paragraph of a story. It can be about anything you want."
                 story = self.bot.ollama_client.generate_text("dolphin-2.2.1-mistral:7b-q4_K_M", prompt, actor.base_persona)
-                if "Error:" not in story:
+                if "Error:" not in story and channel:
                     embed = discord.Embed(title=f"A story by {actor.name}", description=f"_{story}_", color=actor.aura_color)
-                    await erotica_channel.send(embed=embed)
-        else: # 30% chance to do nothing
+                    await channel.send(embed=embed)
+
+        else:  # 30% chance to do nothing
             print(f"[Scheduler] {actor.name} considered acting, but chose not to.")
 
     async def trigger_event_ai(self):
