@@ -46,6 +46,13 @@ class Scheduler:
             if is_currently_active and not persona.is_online:
                 persona.is_online = True
                 print(f"[Scheduler] {persona.name} is now online.")
+                try:
+                    channel_name = f"{persona.name.lower()}-s-chamber"
+                    channel = discord.utils.get(self.bot.guilds[0].text_channels, name=channel_name)
+                    if channel:
+                        await channel.send(f"*{persona.name} has arrived.*")
+                except Exception as e:
+                    print(f"Failed to send online notification for {persona.name}: {e}")
             elif not is_currently_active and persona.is_online:
                 persona.is_online = False
                 print(f"[Scheduler] {persona.name} is now offline.")

@@ -15,13 +15,13 @@ class ControlPanel(commands.Cog):
         """Gets or creates a webhook for a channel."""
         if channel.id in self.webhooks:
             return self.webhooks[channel.id]
-        
+
         webhooks = await channel.webhooks()
         for webhook in webhooks:
             if webhook.user == self.bot.user:
                 self.webhooks[channel.id] = webhook
                 return webhook
-        
+
         new_webhook = await channel.create_webhook(name="My AI World Messenger")
         self.webhooks[channel.id] = new_webhook
         return new_webhook
@@ -55,7 +55,7 @@ class ControlPanel(commands.Cog):
         persona = self.bot.persona_manager.get_persona(bot_name.capitalize())
         if not persona:
             return await ctx.send(f":x: **Error:** Persona '{bot_name}' not found.")
-        
+
         self.possessed_bot = persona
         await ctx.send(f"👑 You now possess **{persona.name}**. All your messages in this server will now be sent as them. Use `!release` to stop.")
 
@@ -64,7 +64,7 @@ class ControlPanel(commands.Cog):
         """[MASTER ONLY] Releases control of a possessed bot."""
         if not self.possessed_bot:
             return await ctx.send(":x: You are not currently possessing any bot.")
-            
+
         released_name = self.possessed_bot.name
         self.possessed_bot = None
         await ctx.send(f"✅ You have released **{released_name}**.")
@@ -98,26 +98,42 @@ class ControlPanel(commands.Cog):
             embed.add_field(name=f"{persona.name} ({'Online' if persona.is_online else 'Offline'})", value=status_text, inline=True)
         await ctx.send(embed=embed)
 
+    @commands.command(name="worldstatus")
+    async def world_status(self, ctx):
+        """[MASTER ONLY] Displays the online status and schedule of all personas."""
+        personas = self.bot.persona_manager.get_all_personas()
+        embed = discord.Embed(title="My AI World - Global Status", color=0x3498DB)
+
+        description = ""
+        for persona in sorted(personas, key=lambda p: p.name):
+            status_emoji = "🟢 Online" if persona.is_online else "⚫ Offline"
+            schedule = persona.schedule
+            description += f"**{persona.name}**: {status_emoji} (Schedule: {schedule['wake']:02d}:00 - {schedule['sleep']:02d}:00 UTC)\n"
+
+        embed.description = description
+        embed.set_footer(text="Use !status for detailed emotional sliders.")
+        await ctx.send(embed=embed)
+
     @commands.command(name="declare_winner")
     async def declare_winner(self, ctx, winner: discord.Member):
         """[MASTER ONLY] Declares the winner of an active duel, scarring the loser."""
         conflict_cog = self.bot.get_cog('Conflict')
         if not conflict_cog: return await ctx.send(":x: Conflict system not loaded.")
         active_duels = conflict_cog.active_duels
-        
+
         duel_to_remove = None; loser_id = None
         for challenger_id, target_id in active_duels.items():
             if winner.id == challenger_id: loser_id, duel_to_remove = target_id, challenger_id; break
             elif winner.id == target_id: loser_id, duel_to_remove = challenger_id, challenger_id; break
-        
+
         if not duel_to_remove: return await ctx.send(f":x: No active duel found involving **{winner.display_name}**.")
-        
+
         try: loser_user = await self.bot.fetch_user(loser_id); loser_mention = loser_user.mention
         except: loser_mention = loser_id
-            
+
         scar_target_name = loser_id if isinstance(loser_id, str) else self.bot.get_user(loser_id).name
         self.bot.scar_manager.inflict_scar(bot_name=scar_target_name, scar_type="Humiliated", description=f"Defeated by {winner.display_name}.", inflicted_by=winner.display_name)
-        
+
         await ctx.send(f"👑 **The Master has spoken!** {winner.mention} is victorious!\n{loser_mention} has been defeated and permanently scarred by the humiliation.")
         del active_duels[duel_to_remove]
 
@@ -150,7 +166,7 @@ class ControlPanel(commands.Cog):
         aggressor = self.bot.persona_manager.get_persona(aggressor_name.capitalize())
         target = self.bot.persona_manager.get_persona(target_name.capitalize())
         if not aggressor or not target: return await ctx.send(":x: One or both personas not found.")
-        aggressor.horny = 80 
+        aggressor.horny = 80
         await ctx.send(f"Testing rejection scenario: **{aggressor.name}** is rejected by **{target.name}**. Initiating power check...")
         await self.bot.interaction_manager.handle_rejection(aggressor, target, ctx.channel)
 
