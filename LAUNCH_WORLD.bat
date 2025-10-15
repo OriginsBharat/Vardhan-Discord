@@ -8,6 +8,7 @@ set OLLAMA_MODELS=%USERPROFILE%\.ollama\models
 
 REM Start Ollama Server
 echo Starting Ollama Server...
+set OLLAMA_HOST=127.0.0.1
 for /f "tokens=1,* delims==" %%a in ('findstr /b "OLLAMA_PATH" .env') do set OLLAMA_PATH=%%b
 start "Ollama" cmd /c ""%OLLAMA_PATH%\ollama.exe" serve"
 

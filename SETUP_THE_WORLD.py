@@ -126,14 +126,27 @@ class SetupWizard(ctk.CTk):
     def pull_ollama_model(self):
         required_model = "dolphin-2.2.1-mistral:7b-q4_K_M"
         ollama_exe_path = os.path.join(self.ollama_path_entry.get(), "ollama.exe")
+
+        # Ensure OLLAMA_HOST is set for subprocess calls
+        env = os.environ.copy()
+        env['OLLAMA_HOST'] = '127.0.0.1'
+
         try:
-            result = subprocess.run([ollama_exe_path, 'list'], capture_output=True, text=True, check=True, shell=True)
+            # Check if the Ollama service is running by trying to list models.
+            # This requires the service to be active.
+            result = subprocess.run(
+                [ollama_exe_path, 'list'],
+                capture_output=True, text=True, check=True, shell=True, env=env
+            )
             if required_model in result.stdout:
                 messagebox.showinfo("Setup Complete", "Configuration saved. You can now run LAUNCH_WORLD.bat to start the application.")
                 self.destroy()
                 return
-        except (subprocess.CalledProcessError, FileNotFoundError):
-             pass
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            # This error can happen if ollama.exe is not found or if the service isn't running.
+            # We'll proceed to the pull, which will provide a more specific error if it fails.
+            print(f"Could not check for existing models, proceeding to pull. Reason: {e}")
+            pass
 
         progress_window = ctk.CTkToplevel(self)
         progress_window.title("Downloading AI Model")
@@ -145,10 +158,14 @@ class SetupWizard(ctk.CTk):
 
         def do_pull():
             try:
-                subprocess.run([ollama_exe_path, 'pull', required_model], check=True, shell=True)
+                # Attempt to pull the model, which also requires the service to be running.
+                subprocess.run(
+                    [ollama_exe_path, 'pull', required_model],
+                    check=True, shell=True, env=env
+                )
                 messagebox.showinfo("Setup Complete", "Configuration saved and model downloaded. You can now run LAUNCH_WORLD.bat to start the application.")
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to download AI model. Please run '{ollama_exe_path} pull {required_model}' manually.\nError: {e}")
+                messagebox.showerror("Error", f"Failed to download AI model. Please ensure the Ollama service is running and then run '{ollama_exe_path} pull {required_model}' manually.\nError: {e}")
             finally:
                 progress_window.destroy()
                 self.destroy()
