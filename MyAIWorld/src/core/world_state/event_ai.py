@@ -7,9 +7,9 @@ class EventAI(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.event_themes = [
-            "economic boom/bust", "a political intrigue", "a magical anomaly",
-            "a cultural festival", "a natural disaster", "a 'Whisper of Madness'",
-            "a divine blessing/curse", "a criminal underground power shift"
+            "a sudden economic boom", "a political conspiracy", "a strange magical anomaly",
+            "a forgotten cultural festival", "a minor natural disaster", "a whisper of madness spreading through the populace",
+            "a divine blessing from a forgotten god", "a shift in the criminal underground"
         ]
 
     async def generate_event(self):
@@ -31,29 +31,5 @@ class EventAI(commands.Cog):
         await announcements_channel.send(embed=embed)
         print(f"[EventAI] Generated new world event: {event_idea}")
 
-        await self.create_event_command(event_idea, announcements_channel)
-
-    async def create_event_command(self, event_idea: str, channel: discord.TextChannel):
-        """Creates a dynamic command related to the generated event."""
-        self.bot.command_factory.remove_all_created_commands()
-
-        cmd_prompt = f"Based on the event '{event_idea}', generate a short, one-word command name (lowercase_snake_case) and a brief help description for a command a player could use to interact with this event. Format it as: command_name;description"
-        cmd_details = self.bot.ollama_client.generate_text("dolphin-2.2.1-mistral:7b-q4_K_M", cmd_prompt)
-        if "Error:" in cmd_details or ';' not in cmd_details: return
-            
-        name, description = cmd_details.split(';', 1)
-
-        async def event_command_callback(ctx):
-            response_prompt = f"As the world's narrator, describe the outcome of a player trying to '{name}' during the '{event_idea}' event."
-            response_text = self.bot.ollama_client.generate_text("dolphin-2.2.1-mistral:7b-q4_K_M", response_prompt)
-            await ctx.send(f"*{response_text}*")
-
-        self.bot.command_factory.create_command(name.strip(), description.strip(), event_command_callback)
-        
-        cmd_list_channel = discord.utils.get(self.bot.guilds[0].text_channels, name='bot-commands-list')
-        if cmd_list_channel:
-            await cmd_list_channel.send(f"**New Event Command Created:**\n- `!{name.strip()}`: {description.strip()}")
-
 async def setup(bot):
-    bot.event_ai = EventAI(bot)
-    await bot.add_cog(bot.event_ai)
+    await bot.add_cog(EventAI(bot))

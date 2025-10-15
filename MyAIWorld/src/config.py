@@ -26,3 +26,10 @@ VOICE_PATHS = {
     name.replace('VOICE_', ''): os.getenv(name)
     for name in os.environ if name.startswith('VOICE_')
 }
+
+def get_voice_path(character_name: str) -> str | None:
+    """Returns the voice path for a given character, case-insensitively."""
+    for name, path in VOICE_PATHS.items():
+        if name.lower() == character_name.lower():
+            return path
+    return None

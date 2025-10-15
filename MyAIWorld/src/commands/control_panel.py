@@ -83,35 +83,23 @@ class ControlPanel(commands.Cog):
         setattr(persona, emotion.lower(), value)
         await ctx.send(f":white_check_mark: Successfully adjusted **{persona.name}**'s `{emotion.lower()}` to **{value}**.")
 
-    @commands.command(name="status", help="[MASTER ONLY] Display the emotional status of all bots.")
-    async def get_status(self, ctx):
+    @commands.command(name="worldstatus", help="[MASTER ONLY] Display the emotional status of all bots.")
+    async def world_status(self, ctx):
         """[MASTER ONLY] Displays the current emotional status of all personas."""
         personas = self.bot.persona_manager.get_all_personas()
         embed = discord.Embed(title="My AI World - Character Status", color=0x7289DA)
         for persona in sorted(personas, key=lambda p: p.name):
             status_text = (
-                f"**Power Level**: {getattr(persona, 'power_level', 'N/A')}\n"
-                f"**Neediness**: {getattr(persona, 'neediness', 'N/A')}\n"
+                f"**Affection**: {getattr(persona, 'affection', 'N/A')} | "
+                f"**Loneliness**: {getattr(persona, 'loneliness', 'N/A')}\n"
+                f"**Neediness**: {getattr(persona, 'neediness', 'N/A')} | "
                 f"**Horny**: {getattr(persona, 'horny', 'N/A')}\n"
-                f"**Dominance**: {getattr(persona, 'dominance', 'N/A')}"
+                f"**Dominance**: {getattr(persona, 'dominance', 'N/A')} | "
+                f"**Power**: {getattr(persona, 'power_level', 'N/A')}"
             )
-            embed.add_field(name=f"{persona.name} ({'Online' if persona.is_online else 'Offline'})", value=status_text, inline=True)
-        await ctx.send(embed=embed)
-
-    @commands.command(name="worldstatus", help="[MASTER ONLY] Display the online status and schedule of all bots.")
-    async def world_status(self, ctx):
-        """[MASTER ONLY] Displays the online status and schedule of all personas."""
-        personas = self.bot.persona_manager.get_all_personas()
-        embed = discord.Embed(title="My AI World - Global Status", color=0x3498DB)
-
-        description = ""
-        for persona in sorted(personas, key=lambda p: p.name):
-            status_emoji = "🟢 Online" if persona.is_online else "⚫ Offline"
             schedule = persona.schedule
-            description += f"**{persona.name}**: {status_emoji} (Schedule: {schedule['wake']:02d}:00 - {schedule['sleep']:02d}:00 UTC)\n"
-
-        embed.description = description
-        embed.set_footer(text="Use !status for detailed emotional sliders.")
+            status_emoji = "🟢 Online" if persona.is_online else f"⚫ Offline ({schedule['wake']:02d}:00 - {schedule['sleep']:02d}:00)"
+            embed.add_field(name=f"{persona.name} - {status_emoji}", value=status_text, inline=True)
         await ctx.send(embed=embed)
 
     @commands.command(name="declare_winner", help="[MASTER ONLY] Declare a winner in a duel, scarring the loser. Usage: !declare_winner <@User>")

@@ -17,6 +17,8 @@ class Persona:
         self.neediness = 0
         self.horny = 0
         self.dominance = 50
+        self.loneliness = 0
+        self.affection = 50
         self.scars = [] # To be loaded from ScarManager
 
         # Schedule and Status
