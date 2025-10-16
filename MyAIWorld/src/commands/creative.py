@@ -65,9 +65,9 @@ class Creative(commands.Cog):
 
         await ctx.message.add_reaction("🔊")
         try:
-            audio_data = self.bot.xtts_client.generate_speech(text, voice_path)
+            audio_data = self.bot.indextts_client.generate_speech(text, voice_path)
             if not audio_data:
-                return await ctx.send(f"Could not generate speech. The XTTS server may be offline or misconfigured.")
+                return await ctx.send(f"Could not generate speech for {character_name}. The IndexTTS server may be offline or misconfigured.")
 
             vc = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
             if vc and vc.is_connected():

@@ -17,24 +17,20 @@ class Scheduler:
         while not self.bot.is_closed():
             await asyncio.sleep(60)
             await self.check_schedules()
-            if random.randint(1, 10) == 1: # Roughly every 10 minutes
+            if random.randint(1, 10) == 1:
                 await self.trigger_autonomous_actions()
-            if random.randint(1, 15) == 1: # Roughly every 15 minutes
+            if random.randint(1, 15) == 1:
                 await self.check_loneliness()
-            if random.randint(1, 30) == 1: # Roughly every 30 minutes
-                event_ai_cog = self.bot.get_cog("EventAI")
-                if event_ai_cog:
-                    await event_ai_cog.generate_event()
+            if random.randint(1, 30) == 1 and self.bot.get_cog("EventAI"):
+                await self.bot.get_cog("EventAI").generate_event()
 
     async def check_schedules(self):
         current_hour = datetime.datetime.now(datetime.timezone.utc).hour
         for persona in self.bot.persona_manager.get_all_personas():
-            # Increase loneliness if offline
             if not persona.is_online:
                 persona.loneliness = min(100, persona.loneliness + 0.5)
-
             wake, sleep = persona.schedule.get("wake", 7), persona.schedule.get("sleep", 23)
-            is_active = (wake <= current_hour < sleep) or (wake > sleep and (current_hour >= wake or current_hour < sleep))
+            is_active = (wake <= current_sim_hour < sleep) or (wake > sleep and (current_sim_hour >= wake or current_sim_hour < sleep))
             if is_active != persona.is_online:
                 persona.is_online = is_active
                 print(f"[Scheduler] {persona.name} is now {'online' if is_active else 'offline'}.")
@@ -62,6 +58,25 @@ class Scheduler:
             if not text_channel: return
             message = self.bot.ollama_client.generate_text("dolphin-2.2.1-mistral:7b-q4_K_M", prompt, actor.base_persona)
             if "Error:" in message: return
+
+            # 5% chance to speak instead of type
+            if random.randint(1, 20) == 1:
+                voice_path = get_voice_path(actor.name)
+                if voice_path and os.path.exists(voice_path):
+                    voice_channel = discord.utils.get(guild.voice_channels, name="The Forum")
+                    if voice_channel:
+                        await text_channel.send(f"_{actor.name} wanders into {voice_channel.name} and begins to speak..._")
+                        audio_data = self.bot.indextts_client.generate_speech(message, voice_path)
+                        if audio_data:
+                            try:
+                                vc = await voice_channel.connect()
+                                vc.play(discord.FFmpegPCMAudio(io.BytesIO(audio_data), pipe=True))
+                                while vc.is_playing(): await asyncio.sleep(1)
+                                await vc.disconnect()
+                            except Exception as e:
+                                print(f"Error playing audio in scheduler: {e}")
+                            return
+
             control_panel_cog = self.bot.get_cog('ControlPanel')
             if control_panel_cog:
                 webhook = await control_panel_cog.get_webhook(text_channel)
@@ -84,10 +99,8 @@ class Scheduler:
                 await channel.send(embed=embed)
 
     async def check_loneliness(self):
-        """Checks bot loneliness and may trigger a proactive DM to the Master."""
         master_user = await self.bot.fetch_user(self.bot.config.MASTER_ID)
         if not master_user: return
-
         for persona in self.bot.persona_manager.get_all_personas():
             if persona.is_online and persona.loneliness > 80:
                 print(f"[Scheduler] {persona.name}'s loneliness is high. Triggering proactive DM.")
@@ -95,7 +108,7 @@ class Scheduler:
                 message = self.bot.ollama_client.generate_text("dolphin-2.2.1-mistral:7b-q4_K_M", prompt, persona.base_persona)
                 if "Error:" not in message:
                     await master_user.send(f"**A message from {persona.name}:**\n_{message}_")
-                    persona.loneliness = 0 # Reset after contacting
+                    persona.loneliness = 0
 
     def start(self):
         self.task = asyncio.create_task(self._scheduler_loop())

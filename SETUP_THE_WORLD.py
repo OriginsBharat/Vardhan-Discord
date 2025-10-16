@@ -72,10 +72,10 @@ class SetupWizard(ctk.CTk):
         self.comfyui_path_entry = ctk.CTkEntry(self.paths_frame, placeholder_text="e.g., C:\\Users\\YourUser\\ComfyUI")
         self.comfyui_path_entry.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
         ctk.CTkButton(self.paths_frame, text="Browse", width=70, command=lambda: self.browse_directory(self.comfyui_path_entry)).grid(row=1, column=2, padx=10, pady=5)
-        ctk.CTkLabel(self.paths_frame, text="XTTSv2 Server Path:").grid(row=2, column=0, padx=10, pady=5, sticky="w")
-        self.xtts_path_entry = ctk.CTkEntry(self.paths_frame, placeholder_text="e.g., C:\\Users\\YourUser\\XTTS-v2")
-        self.xtts_path_entry.grid(row=2, column=1, padx=10, pady=5, sticky="ew")
-        ctk.CTkButton(self.paths_frame, text="Browse", width=70, command=lambda: self.browse_directory(self.xtts_path_entry)).grid(row=2, column=2, padx=10, pady=5)
+        ctk.CTkLabel(self.paths_frame, text="IndexTTS Server Path:").grid(row=2, column=0, padx=10, pady=5, sticky="w")
+        self.indextts_path_entry = ctk.CTkEntry(self.paths_frame, placeholder_text="e.g., C:\\Users\\YourUser\\index-tts")
+        self.indextts_path_entry.grid(row=2, column=1, padx=10, pady=5, sticky="ew")
+        ctk.CTkButton(self.paths_frame, text="Browse", width=70, command=lambda: self.browse_directory(self.indextts_path_entry)).grid(row=2, column=2, padx=10, pady=5)
         # Voices & Kinks
         try:
             with open(os.path.join(BASE_DIR, "MyAIWorld", "data", "character_canon.json"), "r") as f:
@@ -102,7 +102,7 @@ class SetupWizard(ctk.CTk):
         if filepath: entry_widget.delete(0, "end"); entry_widget.insert(0, filepath)
 
     def begin_setup(self):
-        if not all([self.discord_token_entry.get(), self.master_id_entry.get(), self.ollama_path_entry.get(), self.xtts_path_entry.get(), self.comfyui_path_entry.get(), self.pinecone_key_entry.get(), self.pinecone_env_entry.get()]):
+        if not all([self.discord_token_entry.get(), self.master_id_entry.get(), self.ollama_path_entry.get(), self.indextts_path_entry.get(), self.comfyui_path_entry.get(), self.pinecone_key_entry.get(), self.pinecone_env_entry.get()]):
             messagebox.showerror("Error", "All fields must be filled out.")
             return
         os.makedirs(os.path.join(BASE_DIR, "MyAIWorld", "data"), exist_ok=True)
@@ -110,7 +110,7 @@ class SetupWizard(ctk.CTk):
             f.write(f"DISCORD_TOKEN={self.discord_token_entry.get()}\n")
             f.write(f"MASTER_ID={self.master_id_entry.get()}\n")
             f.write(f"OLLAMA_PATH={self.ollama_path_entry.get()}\n")
-            f.write(f"XTTS_PATH={self.xtts_path_entry.get()}\n")
+            f.write(f"INDEXTTS_PATH={self.indextts_path_entry.get()}\n")
             f.write(f"COMFYUI_PATH={self.comfyui_path_entry.get()}\n")
             f.write(f"PINECONE_API_KEY={self.pinecone_key_entry.get()}\n")
             f.write(f"PINECONE_ENVIRONMENT={self.pinecone_env_entry.get()}\n")

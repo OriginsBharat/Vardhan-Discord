@@ -1,13 +1,13 @@
 import requests
 import os
 
-class XTTSClient:
+class IndexTTSClient:
     def __init__(self, host="http://127.0.0.1:8020"):
         self.api_url = f"{host}/tts_to_audio/"
 
     def generate_speech(self, text: str, speaker_wav_path: str):
         if not os.path.exists(speaker_wav_path):
-            print(f"[XTTS] Error: Speaker WAV not found at {speaker_wav_path}")
+            print(f"[IndexTTS] Error: Speaker WAV not found at {speaker_wav_path}")
             return None
         try:
             with open(speaker_wav_path, "rb") as f:
@@ -20,8 +20,8 @@ class XTTSClient:
             response.raise_for_status()
             return response.content
         except requests.exceptions.RequestException:
-            print(f"[XTTS] Error connecting to XTTS server.")
+            print(f"[IndexTTS] Error connecting to IndexTTS server.")
             return None
         except Exception as e:
-            print(f"[XTTS] An unexpected error occurred: {e}")
+            print(f"[IndexTTS] An unexpected error occurred: {e}")
             return None

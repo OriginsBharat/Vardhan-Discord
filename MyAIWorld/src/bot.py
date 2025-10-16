@@ -8,7 +8,7 @@ from src.core.personas import PersonaManager
 from src.core.world_state.scheduler import Scheduler
 from src.core.world_state.simulation import SimulationManager
 from src.core.ai_services.ollama_client import OllamaClient
-from src.core.ai_services.xtts_client import XTTSClient
+from src.core.ai_services.indextts_client import IndexTTSClient
 from src.core.command_factory import CommandFactory
 from src.config import BOT_PREFIX, MASTER_ID
 
@@ -23,7 +23,7 @@ class MyAIWorldBot(commands.Bot):
         self.simulation_manager = SimulationManager(self)
         self.scheduler = Scheduler(self)
         self.ollama_client = OllamaClient()
-        self.xtts_client = XTTSClient()
+        self.indextts_client = IndexTTSClient()
         self.command_factory = CommandFactory(self)
         self.has_run_startup = False
 
@@ -31,14 +31,16 @@ class MyAIWorldBot(commands.Bot):
         print("Loading all cogs...")
         cog_paths = ['src/commands', 'src/core']
         for path in cog_paths:
-            for root, _, files in os.walk(f'MyAIWorld/{path}'):
+            # Correctly construct path relative to the script's location
+            start_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', path.replace('src/', ''))
+            for root, _, files in os.walk(start_path):
                 for filename in files:
                     if filename.endswith('.py') and not filename.startswith('__'):
                         # Convert file path to module path
                         module_path = os.path.join(root, filename)
-                        extension = module_path.replace(os.sep, '.')[:-3]
-                        # Correct the module path for discord.py
-                        extension = extension.replace('MyAIWorld.src.', 'src.')
+                        # Create module path relative to 'src'
+                        rel_path = os.path.relpath(module_path, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+                        extension = "src." + rel_path.replace(os.sep, '.')[:-3]
 
                         try:
                             await self.load_extension(extension)
